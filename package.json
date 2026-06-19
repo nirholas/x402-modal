@@ -1,0 +1,75 @@
+{
+	"name": "@three-ws/x402-modal",
+	"version": "0.2.0",
+	"description": "A drop-in, dependency-free payment modal for any x402 paid endpoint. One script tag turns a 402 challenge into a polished checkout: wallet connect (Phantom on Solana, MetaMask/EVM via EIP-3009), the 402 → sign → settle flow, SIWX re-entry, spending caps, and a receipt — vanilla JS, no bundler required. Powered by three.ws.",
+	"keywords": [
+		"x402",
+		"payments",
+		"micropayments",
+		"usdc",
+		"stablecoin",
+		"solana",
+		"base",
+		"evm",
+		"eip-3009",
+		"eip3009",
+		"phantom",
+		"metamask",
+		"paywall",
+		"pay-per-call",
+		"checkout",
+		"web3",
+		"siwx",
+		"agent-payments",
+		"402"
+	],
+	"author": "three.ws <support@three.ws> (https://three.ws)",
+	"license": "Apache-2.0",
+	"homepage": "https://three.ws",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/nirholas/three.ws.git",
+		"directory": "x402-modal-sdk"
+	},
+	"bugs": {
+		"url": "https://github.com/nirholas/three.ws/issues"
+	},
+	"type": "module",
+	"main": "./dist/x402-modal.mjs",
+	"module": "./dist/x402-modal.mjs",
+	"unpkg": "./dist/x402.global.js",
+	"jsdelivr": "./dist/x402.global.js",
+	"types": "./types/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./types/index.d.ts",
+			"import": "./dist/x402-modal.mjs",
+			"default": "./dist/x402-modal.mjs"
+		},
+		"./global": "./dist/x402.global.js",
+		"./src": "./src/x402-modal.js"
+	},
+	"files": [
+		"dist",
+		"src",
+		"types",
+		"docs",
+		"README.md",
+		"TUTORIAL.md",
+		"LICENSE"
+	],
+	"scripts": {
+		"build": "node build.mjs",
+		"prepublishOnly": "node build.mjs",
+		"test": "node --test \"test/*.test.js\""
+	},
+	"devDependencies": {
+		"esbuild": "^0.21.0"
+	},
+	"engines": {
+		"node": ">=18"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}
