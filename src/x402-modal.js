@@ -1,115 +1,111 @@
-// @three-ws/x402-modal — drop-in payment modal for any x402 paid endpoint.
+// @three-ws/x402-modal — a drop-in payment modal for any x402 paid endpoint.
 //
-// A single, dependency-free ES module. Drop it on any page and any element with
-// `data-x402-endpoint` opens a payment modal on click:
+// This is the canonical, side-effect-free core. It exports the public API
+// (`pay`, `init`, `configure`, `siwx`, `version`, `CheckoutModal`) but does NOT
+// touch `window` or auto-bind anything on import — that lives in `global.js`,
+// which is what the CDN <script> build ships.
 //
-//   <script type="module" src="https://unpkg.com/@three-ws/x402-modal"></script>
-//
-//   <button
-//     data-x402-endpoint="https://example.com/api/paid/summarize"
-//     data-x402-method="POST"
-//     data-x402-body='{"text":"hello"}'
-//     data-x402-merchant="Acme"
-//     data-x402-action="Summarize"
-//   >Pay & Run</button>
-//
-// On completion the element receives an `x402:result` CustomEvent whose detail
-// is { ok, result, payment, response }. On error: `x402:error` with { error }.
-//
-// You can also call programmatically:
+// Bundler / npm usage:
 //
 //   import { pay, configure } from '@three-ws/x402-modal';
-//   const out = await pay({
-//     endpoint: '/api/paid/summarize',
-//     body: { text: 'hello' },
-//     merchant: 'Acme',
-//     action: 'Summarize',
-//   });
+//   const out = await pay({ endpoint: '/api/paid/summarize', body: { text: 'hi' } });
 //
-// The modal handles wallet connect (Phantom for Solana, window.ethereum for
-// Base/EVM USDC via EIP-3009), drives the 402 → sign → retry flow, optional
-// SIWX (Sign-In-With-X) re-entry, client-side spending caps, and shows the
-// result. Vanilla JS, no bundler required.
+// Drop-in <script> usage (the global build auto-binds `data-x402-endpoint`):
 //
-// Everything host-specific (the Solana checkout origin, branding, builder-code
-// attribution, and the esm.sh CDN URLs used for the Solana/EVM crypto helpers)
-// is configurable via `configure({...})` or `data-*` attributes on the script
-// tag — see CONFIG / configure() below and docs/api-reference.md.
+//   <script type="module" src="https://unpkg.com/@three-ws/x402-modal/global"></script>
+//   <button data-x402-endpoint="/api/paid/summarize" data-x402-method="POST">Pay & run</button>
+//
+// The modal drives the full 402 → connect wallet → sign → retry → settle flow,
+// renders price/network/steps/receipt, and resolves with { ok, result, payment,
+// response }. Vanilla JS; the only network deps (Solana web3.js, a keccak for
+// EVM SIWX) are dynamic-imported from a CDN, and only when that path runs.
 
-const VERSION = '1.0.0';
+const VERSION = '0.2.0';
 
 // ─────────────────────────────────────────────────────────── configuration ───
-// All host-specific knobs live here so the modal runs unchanged on any site.
-// Defaults match the three.ws hosted instance; override with configure() or via
-// `data-*` attributes on the <script> tag (read once at load by readScriptConfig).
-const CONFIG = {
-	// Origin that serves the Solana checkout endpoints
-	// (`/api/x402-checkout?action=prepare|encode`). `null` → resolve from this
-	// script's own src, falling back to the current page origin. EVM payments
-	// never touch this — the wallet signs EIP-3009 typed-data locally.
-	checkoutOrigin: null,
-	// Path of the checkout endpoint on `checkoutOrigin`. Override if you mount
-	// the server handler somewhere other than /api/x402-checkout.
-	checkoutPath: '/api/x402-checkout',
-	// Footer attribution shown in the modal.
-	brand: { name: 'three.ws', url: 'https://three.ws' },
-	// Small text on the left of the footer.
-	footerNote: 'x402 · onchain settled',
+// Everything the host wants to brand or repoint lives here. Defaults reproduce
+// three.ws's hosted behaviour exactly, so the drop-in script is unchanged; a
+// standalone deployment overrides them with `configure()` (global) or per-call
+// `pay({ ... })` options (which always win over the global config).
+
+const DEFAULTS = {
+	// Origin that serves the Solana `prepare` / `encode` checkout helpers
+	// (POST {origin}/api/x402-checkout?action=prepare|encode). Only the Solana
+	// payment path uses these — the EVM/EIP-3009 path is fully client-side and
+	// needs no backend. `null` ⇒ resolve from the script's own origin at runtime.
+	apiOrigin: null,
+	// Footer attribution shown at the bottom of the modal.
+	brand: { label: 'Powered by three.ws', href: 'https://three.ws' },
 	// ERC-8021 builder-code self-attribution echoed back when the 402 challenge
-	// declares a builder-code extension. Set either field to '' to disable it.
+	// declares a builder code. `wallet` = your wallet code, `service` = your
+	// integration code. Set to null to disable the echo entirely.
 	builderCode: { wallet: '3d_agent', service: '3d_agent_modal' },
-	// CDN URLs for the crypto helpers loaded on demand (only when a Solana or an
-	// EVM sign-in payment is actually attempted). Repoint these at a self-hosted
-	// mirror to satisfy a strict Content-Security-Policy.
-	esm: {
-		solanaWeb3: 'https://esm.sh/@solana/web3.js@1.95.3?bundle',
-		nobleHashesSha3: 'https://esm.sh/@noble/hashes@1.4.0/sha3?bundle',
-	},
+	// CDN modules dynamic-imported on demand. Override to self-host / satisfy a
+	// strict Content-Security-Policy.
+	solanaWeb3Url: 'https://esm.sh/@solana/web3.js@1.95.3?bundle',
+	nobleHashesUrl: 'https://esm.sh/@noble/hashes@1.4.0/sha3?bundle',
 };
 
-/**
- * Merge caller overrides into CONFIG. Shallow-merges the nested `brand`,
- * `builderCode`, and `esm` objects so you can override a single field. Call
- * before the first `pay()` (or before the auto-bound buttons are clicked).
- * @param {Partial<typeof CONFIG>} opts
- * @returns {typeof CONFIG} the resolved config
- */
-export function configure(opts = {}) {
-	if (!opts || typeof opts !== 'object') return CONFIG;
-	for (const key of ['checkoutOrigin', 'checkoutPath', 'footerNote']) {
-		if (opts[key] !== undefined) CONFIG[key] = opts[key];
-	}
-	if (opts.brand && typeof opts.brand === 'object') Object.assign(CONFIG.brand, opts.brand);
-	if (opts.builderCode && typeof opts.builderCode === 'object') Object.assign(CONFIG.builderCode, opts.builderCode);
-	if (opts.esm && typeof opts.esm === 'object') Object.assign(CONFIG.esm, opts.esm);
-	return CONFIG;
+const config = {
+	apiOrigin: DEFAULTS.apiOrigin,
+	brand: { ...DEFAULTS.brand },
+	builderCode: DEFAULTS.builderCode ? { ...DEFAULTS.builderCode } : null,
+	solanaWeb3Url: DEFAULTS.solanaWeb3Url,
+	nobleHashesUrl: DEFAULTS.nobleHashesUrl,
+};
+
+// Resolve the origin that hosts this script — used as the default API origin for
+// the Solana prepare/encode helpers. Falls back to the page origin.
+function resolveScriptOrigin() {
+	try {
+		if (typeof document !== 'undefined') {
+			const current = document.currentScript;
+			if (current?.src) return new URL(current.src).origin;
+			const found = document.querySelector('script[src*="x402"]');
+			if (found?.src) return new URL(found.src).origin;
+		}
+	} catch (_) {}
+	return typeof location !== 'undefined' ? location.origin : '';
 }
 
-// Resolved base URL for the Solana checkout endpoints.
-function checkoutBase() {
-	return `${CONFIG.checkoutOrigin || ORIGIN}${CONFIG.checkoutPath}`;
+// Merge user config in. `apiOrigin: ''` is honoured (same-origin); only
+// `undefined` keeps the default. Returns the resolved snapshot for inspection.
+export function configure(opts = {}) {
+	if (!opts || typeof opts !== 'object') return getConfig();
+	if (opts.apiOrigin !== undefined) config.apiOrigin = opts.apiOrigin;
+	if (opts.brand) config.brand = { ...config.brand, ...opts.brand };
+	if (opts.builderCode === null) config.builderCode = null;
+	else if (opts.builderCode) config.builderCode = { ...(config.builderCode || {}), ...opts.builderCode };
+	if (opts.solanaWeb3Url) config.solanaWeb3Url = opts.solanaWeb3Url;
+	if (opts.nobleHashesUrl) config.nobleHashesUrl = opts.nobleHashesUrl;
+	return getConfig();
+}
+
+export function getConfig() {
+	return {
+		apiOrigin: config.apiOrigin,
+		brand: { ...config.brand },
+		builderCode: config.builderCode ? { ...config.builderCode } : null,
+		solanaWeb3Url: config.solanaWeb3Url,
+		nobleHashesUrl: config.nobleHashesUrl,
+	};
+}
+
+// The effective API origin for a given pay() call: explicit per-call > global
+// config > lazily-resolved script origin (cached back into config).
+function apiOriginFor(opts) {
+	if (opts && opts.apiOrigin !== undefined && opts.apiOrigin !== null) return opts.apiOrigin;
+	if (config.apiOrigin !== null && config.apiOrigin !== undefined) return config.apiOrigin;
+	config.apiOrigin = resolveScriptOrigin();
+	return config.apiOrigin;
 }
 
 // SIWX ("Sign-In-With-X" / CAIP-122) lets a wallet that has already paid for
 // an endpoint re-enter it by signing a challenge instead of paying again. The
 // server advertises support by including `extensions['sign-in-with-x']` in the
-// 402 body; clients submit signed proofs via the `SIGN-IN-WITH-X` header. See
-// prompts/siwx/PLAN.md for the full architecture.
+// 402 body; clients submit signed proofs via the `SIGN-IN-WITH-X` header.
 const SIWX_HEADER = 'SIGN-IN-WITH-X';
 const SIWX_EXTENSION_KEY = 'sign-in-with-x';
-
-const ORIGIN = (() => {
-	// Resolve the origin that hosts this script — used as the API origin for
-	// the prepare/encode helpers. Falls back to the merchant origin in same-
-	// origin mode.
-	try {
-		const script = document.currentScript;
-		if (script?.src) return new URL(script.src).origin;
-		const found = document.querySelector('script[src*="/x402.js"]');
-		if (found?.src) return new URL(found.src).origin;
-	} catch (_) {}
-	return location.origin;
-})();
 
 // USDC EIP-3009 typed-data sig works against Base USDC at this address. The
 // domain `version` must match the on-chain `EIP712_DOMAIN_SEPARATOR_VERSION`
@@ -123,11 +119,9 @@ const EVM_NETWORKS = {
 
 // Normalize a single 402 `accept` entry to the shape the modal speaks
 // internally. The x402 spec's canonical atomic-price field is
-// `maxAmountRequired`; some merchants (and our own server) emit `amount`. We
-// read `amount` everywhere downstream (price display, cap check, prepare/encode
-// POST body, EIP-3009 signing), so coerce here once at ingestion. Without this,
-// a spec-compliant merchant yields `accept.amount === undefined` → "NaN USDC"
-// in the modal and an `accept.amount: Required` 400 from /api/x402-checkout.
+// `maxAmountRequired`; some merchants emit `amount`. We read `amount`
+// everywhere downstream, so coerce here once at ingestion. Without this, a
+// spec-compliant merchant yields `accept.amount === undefined` → "NaN USDC".
 function normalizeAccept(accept) {
 	if (!accept || typeof accept !== 'object') return accept;
 	const amount = accept.amount ?? accept.maxAmountRequired;
@@ -143,9 +137,7 @@ function isEvmNetwork(net) {
 // The modal only signs EIP-3009 transferWithAuthorization for EVM. When the
 // server publishes both an EIP-3009 entry and a Permit2 sibling (the
 // gas-sponsoring path used by @x402/evm SDK clients), we must pick the
-// EIP-3009 one — signing typed-data against the Permit2 entry would build a
-// payload the facilitator rejects. The sibling carries
-// `extra.assetTransferMethod === 'permit2'`; the legacy entry omits it.
+// EIP-3009 one. The sibling carries `extra.assetTransferMethod === 'permit2'`.
 function isEip3009Accept(accept) {
 	if (!isEvmNetwork(accept?.network)) return false;
 	const method = accept?.extra?.assetTransferMethod;
@@ -185,13 +177,12 @@ function b64decode(str) {
 	}
 }
 
-// ──────────────────────────────────────────── Spending caps (USE-22) ────────
-// Persists per-wallet spend in localStorage so reload-survivable caps work
-// in a pure-browser context. Keys are bucketed by UTC hour and UTC day so
-// the sliding windows reset cleanly at midnight UTC for the daily case.
-// All amounts are stored as base-10 BigInt strings of micro-USD; stablecoin
-// payments (USDC, USDT, DAI) flow through as-is since their atomics are
-// already 6-decimal USD-pegged.
+// ──────────────────────────────────────────────────────── Spending caps ─────
+// Persists per-wallet spend in localStorage so reload-survivable caps work in a
+// pure-browser context. Keys are bucketed by UTC hour and UTC day so the
+// sliding windows reset cleanly at midnight UTC for the daily case. Amounts are
+// stored as base-10 BigInt strings of micro-USD; stablecoin payments flow
+// through as-is since their atomics are already 6-decimal USD-pegged.
 
 const SPEND_LS_PREFIX = 'x402.spend.';
 const STABLE_NAMES = new Set([
@@ -236,14 +227,14 @@ function toMicroUsdBrowser(amount, accept) {
 		return atomic * 10n ** BigInt(6 - decimals);
 	}
 	// Non-stable in the browser modal: we don't fetch live prices to keep the
-	// drop-in script dependency-free. Cap enforcement for non-stable assets
-	// must be done server-side via x402-spending-cap.js.
+	// drop-in script dependency-free. Cap enforcement for non-stable assets must
+	// be done server-side.
 	return atomic;
 }
 
-// Check the configured caps and, if admitted, reserve the spend in
-// localStorage. Returns { abort: boolean, reason?, reservation? }.
-// Reservation has { address, microUsd, buckets } so rollback can undo.
+// Check the configured caps and, if admitted, reserve the spend in localStorage.
+// Returns { abort, reason?, reservation? }. Reservation carries { address,
+// microUsd, buckets } so a failed payment can roll the reservation back.
 function browserEnforceCap({ accept, caps, address }) {
 	if (!caps || !address) return { abort: false };
 	const microUsd = toMicroUsdBrowser(accept.amount, accept);
@@ -251,10 +242,7 @@ function browserEnforceCap({ accept, caps, address }) {
 	const maxPerHour = caps.maxPerHour != null ? BigInt(caps.maxPerHour) : null;
 	const maxPerDay = caps.maxPerDay != null ? BigInt(caps.maxPerDay) : null;
 	if (maxPerCall != null && microUsd > maxPerCall) {
-		return {
-			abort: true,
-			reason: `Per-call cap exceeded (${microUsd} > ${maxPerCall} µUSD)`,
-		};
+		return { abort: true, reason: `Per-call cap exceeded (${microUsd} > ${maxPerCall} µUSD)` };
 	}
 	const buckets = spendBuckets();
 	const hourTotal = readSpend(address, 'hr', buckets.hour) + microUsd;
@@ -282,23 +270,22 @@ function browserRollbackReservation(reservation) {
 }
 
 // ──────────────────────────────────────────── ERC-8021 builder-code echo ────
-// The server-side x402-spec.js enforces that any client-echoed builder-code
-// `a` matches what the 402 challenge declared (anti-tamper). Builders/wallets
-// can append their own service code in `s` and set their wallet code `w`
-// — for our own demo modal we self-attribute `w: "3d_agent"` and `s: ["3d_agent_modal"]`.
+// The server enforces that any client-echoed builder-code `a` matches what the
+// 402 challenge declared (anti-tamper). We self-attribute `w` (wallet) and `s`
+// (service) from config; both are validated against the strict code pattern.
 
 const BUILDER_CODE_KEY = 'builder-code';
 const BUILDER_CODE_PATTERN = /^[a-z0-9_]{1,32}$/;
 
 function buildBuilderCodeEcho(challenge) {
+	const codes = config.builderCode;
+	if (!codes) return null;
 	const ext = challenge?.extensions?.[BUILDER_CODE_KEY];
 	const declaredA = ext?.info?.a;
 	if (!declaredA || !BUILDER_CODE_PATTERN.test(declaredA)) return null;
 	const out = { a: declaredA };
-	const serviceCode = CONFIG.builderCode.service;
-	const walletCode = CONFIG.builderCode.wallet;
-	if (serviceCode && BUILDER_CODE_PATTERN.test(serviceCode)) out.s = [serviceCode];
-	if (walletCode && BUILDER_CODE_PATTERN.test(walletCode)) out.w = walletCode;
+	if (codes.service && BUILDER_CODE_PATTERN.test(codes.service)) out.s = [codes.service];
+	if (codes.wallet && BUILDER_CODE_PATTERN.test(codes.wallet)) out.w = codes.wallet;
 	return out;
 }
 
@@ -323,11 +310,6 @@ function pickSiwxChain(ext, walletKind) {
 // Build the CAIP-122 message string. The server rebuilds the same string from
 // payload fields when verifying — any line-by-line drift makes the recovered
 // signer mismatch payload.address and the signature is rejected.
-//
-// EVM path mirrors EIP-4361 / siwe library's prepareMessage (chain ref =
-// numeric chainId extracted from "eip155:<n>"). Solana path mirrors SIWS
-// (chain ref = genesis hash extracted from "solana:<ref>"). Optional fields
-// are omitted entirely when absent from server info.
 function buildSiwxMessage(info, chain, address) {
 	const isEvm = chain.type === 'eip191';
 	const accountHeader = isEvm
@@ -341,10 +323,9 @@ function buildSiwxMessage(info, chain, address) {
 		lines.push(info.statement, '');
 	} else if (isEvm) {
 		// siwe's prepareMessage() reserves the statement block even when the
-		// statement is absent, emitting an extra blank line (header, address,
-		// "", "", URI). SIWS's formatter does not. The server rebuilds the EVM
-		// message via siwe before recovering the signer, so omit-statement EVM
-		// must carry the same extra blank or the recovered address mismatches.
+		// statement is absent, emitting an extra blank line. SIWS does not. The
+		// server rebuilds the EVM message via siwe before recovering the signer,
+		// so omit-statement EVM must carry the same extra blank.
 		lines.push('');
 	}
 	lines.push(`URI: ${info.uri}`);
@@ -362,9 +343,8 @@ function buildSiwxMessage(info, chain, address) {
 	return lines.join('\n');
 }
 
-// Base64-encoded JSON per x402 v2 spec (CHANGELOG-v2.md line 335). CAIP-122
-// fields are all ASCII/Latin-1, so the unescape+encodeURIComponent dance
-// matches what btoa expects without garbling unicode (none is sent anyway).
+// Base64-encoded JSON per x402 v2 spec. CAIP-122 fields are all ASCII/Latin-1,
+// so the unescape+encodeURIComponent dance matches what btoa expects.
 function encodeSiwxHeaderValue(payload) {
 	const json = JSON.stringify(payload);
 	if (typeof Buffer !== 'undefined') return Buffer.from(json, 'utf8').toString('base64');
@@ -372,8 +352,7 @@ function encodeSiwxHeaderValue(payload) {
 }
 
 // Base58 (Bitcoin alphabet) — Solana's encoding for both addresses and
-// signatures. Inlined here to avoid pulling in a bundler dependency; this
-// matches what `bs58` does on the server side (api/_lib/siws.js).
+// signatures. Inlined here to avoid pulling in a bundler dependency.
 const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 function base58encode(bytes) {
 	if (!bytes || bytes.length === 0) return '';
@@ -390,21 +369,15 @@ function base58encode(bytes) {
 	return out;
 }
 
-// EIP-55 checksum the address before signing. MetaMask returns addresses in
-// lowercase via eth_requestAccounts, but the server rebuilds the SIWE message
-// with a checksummed address (siwe library's prepareMessage always upgrades
-// case via getAddress). If we sign a lowercase-address message and send the
-// lowercase address in the payload, the server's recovered signer (from the
-// checksummed-address message it builds) differs from payload.address and
-// verification fails. So checksum here, then use the same string everywhere.
-//
-// Keccak-256 lives in @noble/hashes which the server already uses
-// (api/_lib/siws.js → @noble/curves). Pulled in dynamically via esm.sh only
-// when SIWX EVM sign-in is actually attempted, mirroring loadSolanaWeb3.
+// EIP-55 checksum the address before signing. MetaMask returns lowercase
+// addresses, but the server rebuilds the SIWE message with a checksummed
+// address. If we sign a lowercase-address message and send the lowercase
+// address in the payload, the recovered signer differs and verification fails.
+// Keccak-256 is dynamic-imported from a CDN only when SIWX EVM sign-in runs.
 let _evmChecksum = null;
 async function loadEvmChecksum() {
 	if (_evmChecksum) return _evmChecksum;
-	const sha3 = await import(/* @vite-ignore */ CONFIG.esm.nobleHashesSha3);
+	const sha3 = await import(/* @vite-ignore */ config.nobleHashesUrl);
 	const keccak = sha3.keccak_256;
 	_evmChecksum = (addr) => {
 		const a = String(addr).toLowerCase().replace(/^0x/, '');
@@ -694,7 +667,7 @@ const STYLES = `
 `;
 
 function injectStyles() {
-	if (document.getElementById(STYLE_ID)) return;
+	if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return;
 	const el = document.createElement('style');
 	el.id = STYLE_ID;
 	el.textContent = STYLES;
@@ -703,7 +676,7 @@ function injectStyles() {
 
 // ───────────────────────────────────────────────────────────── modal class ───
 
-class CheckoutModal {
+export class CheckoutModal {
 	constructor(opts) {
 		this.opts = opts;
 		this.steps = [
@@ -723,10 +696,20 @@ class CheckoutModal {
 		this.autoConnectTried = false;
 	}
 
+	_apiOrigin() {
+		return apiOriginFor(this.opts);
+	}
+
 	mount() {
 		injectStyles();
+		const brand = this.opts.brand || config.brand || {};
 		const overlay = document.createElement('div');
 		overlay.className = 'x402-overlay';
+		const brandHtml = brand.href
+			? `<a href="${escapeHtml(brand.href)}" target="_blank" rel="noopener">${escapeHtml(brand.label || brand.href)}</a>`
+			: brand.label
+				? `<span>${escapeHtml(brand.label)}</span>`
+				: '';
 		overlay.innerHTML = `
 			<div class="x402-modal" role="dialog" aria-modal="true" aria-label="x402 payment">
 				<div class="x402-head">
@@ -743,7 +726,7 @@ class CheckoutModal {
 				<div class="x402-body" data-body></div>
 				<div class="x402-foot">
 					<span class="x402-secure">x402 · onchain settled</span>
-					<a href="https://three.ws" target="_blank" rel="noopener">Powered by three.ws</a>
+					${brandHtml}
 				</div>
 			</div>
 		`;
@@ -810,11 +793,9 @@ class CheckoutModal {
 		const evmAccept = this.challenge?.accepts.find(isEip3009Accept);
 
 		// SIWX-first path: when the 402 advertises sign-in-with-x AND we have a
-		// compatible wallet, lead with "Sign in with wallet" (primary) and
-		// demote pay to a secondary action. payFlowOverride is set true when
-		// the user explicitly chooses to pay (either by clicking the secondary
-		// button, or after a 401/402 siwx_not_paid retry told us this wallet
-		// hasn't actually paid for this resource yet).
+		// compatible wallet, lead with "Sign in with wallet" (primary) and demote
+		// pay to a secondary action. payFlowOverride is set true when the user
+		// explicitly chooses to pay.
 		if (this.siwx && !this.payFlowOverride) {
 			const siwxSolana = phantomDetected ? pickSiwxChain(this.siwx, 'solana') : null;
 			const siwxEvm = evmDetected ? pickSiwxChain(this.siwx, 'evm') : null;
@@ -824,12 +805,10 @@ class CheckoutModal {
 			}
 		}
 
-		// autoConnect (opt-in via opts.autoConnect): when the caller knows the
-		// user is wallet-ready and shouldn't have to pick, skip the picker and go
-		// straight to the signature — but only when exactly one supported wallet
-		// is actually detected. Zero wallets (must install) or two (must choose)
-		// still fall through to the picker, as does the SIWX "you haven't paid"
-		// fallback, which needs to explain itself. One-shot via autoConnectTried.
+		// autoConnect (opt-in via opts.autoConnect): when the caller knows the user
+		// is wallet-ready and shouldn't have to pick, skip the picker and go
+		// straight to the signature — but only when exactly one supported wallet is
+		// actually detected. One-shot via autoConnectTried.
 		if (this.opts.autoConnect && !this.autoConnectTried && !this.siwxFallbackNotice) {
 			this.autoConnectTried = true;
 			const solanaViable = !!(solanaAccept && phantomDetected);
@@ -877,9 +856,6 @@ class CheckoutModal {
 
 	renderSiwxChoice({ siwxSolana, siwxEvm }) {
 		const priceText = formatAmount(this.accept.amount, this.accept.extra?.decimals ?? 6);
-		// One primary button — internally we pick the wallet kind that matches
-		// the supported SIWX chains AND the detected wallets. Phantom wins ties
-		// to match the existing modal's default preference.
 		const siwxTarget = siwxSolana
 			? { kind: 'solana', chain: siwxSolana.chain }
 			: { kind: 'evm', chain: siwxEvm.chain };
@@ -900,7 +876,6 @@ class CheckoutModal {
 			this.payFlowOverride = true;
 			this.renderConnect();
 		});
-		// Focus the primary SIWX button for keyboard accessibility.
 		requestAnimationFrame(() => siwxBtn.focus());
 	}
 
@@ -996,9 +971,8 @@ class CheckoutModal {
 			this.siwx = extractSiwxExtension(challenge);
 			this.payFlowOverride = false;
 			this.siwxFallbackNotice = null;
-			// Prefer Solana when Phantom is present, else first EIP-3009 EVM
-			// entry (skipping Permit2 siblings the modal can't sign for), else
-			// first accept.
+			// Prefer Solana when Phantom is present, else first EIP-3009 EVM entry
+			// (skipping Permit2 siblings the modal can't sign for), else first accept.
 			const solana = challenge.accepts.find((a) => isSolanaNetwork(a.network));
 			const evm = challenge.accepts.find(isEip3009Accept);
 			const phantomDetected = typeof window !== 'undefined' && (window.solana?.isPhantom || window.phantom?.solana);
@@ -1033,22 +1007,23 @@ class CheckoutModal {
 			this.spendReservation = capCheck.reservation || null;
 			this.renderProgress('authorize', { text: `Building Solana payment for ${payerAddress.slice(0, 6)}…${payerAddress.slice(-4)}` });
 
-			const prep = await postJson(`${checkoutBase()}?action=prepare`, {
+			const origin = this._apiOrigin();
+			const prep = await postJson(`${origin}/api/x402-checkout?action=prepare`, {
 				accept,
 				buyer: payerAddress,
 			});
 			this.renderProgress('authorize', { text: 'Confirm in Phantom…' });
 			const txBytes = base64ToUint8Array(prep.tx_base64);
 			// Phantom returns a fully-signed VersionedTransaction with the buyer's
-			// signature added. The facilitator's fee-payer signature is added by
-			// PayAI during /settle.
+			// signature added. The facilitator's fee-payer signature is added during
+			// /settle.
 			const SolanaWeb3 = await loadSolanaWeb3();
 			const tx = SolanaWeb3.VersionedTransaction.deserialize(txBytes);
 			const signed = await provider.signTransaction(tx);
 			const signedB64 = uint8ArrayToBase64(signed.serialize());
 
 			const builderCodeBlock = buildBuilderCodeEcho(this.challenge);
-			const enc = await postJson(`${checkoutBase()}?action=encode`, {
+			const enc = await postJson(`${origin}/api/x402-checkout?action=encode`, {
 				accept,
 				signed_tx_base64: signedB64,
 				resource_url: new URL(this.opts.endpoint, location.href).href,
@@ -1104,7 +1079,6 @@ class CheckoutModal {
 			this.renderProgress('authorize', { text: `Authorize ${formatAmount(accept.amount)} USDC…` });
 
 			// EIP-3009 transferWithAuthorization typed-data signature.
-			// validAfter / validBefore use unix seconds; nonce is a random 32-byte hex.
 			const validAfter = 0;
 			const validBefore = Math.floor(Date.now() / 1000) + (accept.maxTimeoutSeconds || 600);
 			const nonce = '0x' + randomHex(32);
@@ -1157,10 +1131,9 @@ class CheckoutModal {
 				accepted: accept,
 				payload: {
 					signature,
-					// CDP facilitator /verify requires the EIP-3009 time bounds as
-					// decimal strings, not JSON numbers — a numeric validAfter/
-					// validBefore is rejected with "'paymentPayload' is invalid".
-					// The signature is unaffected: uint256 0 and "0" encode identically.
+					// The facilitator /verify requires the EIP-3009 time bounds as
+					// decimal strings, not JSON numbers. The signature is unaffected:
+					// uint256 0 and "0" encode identically.
 					authorization: { from: payerAddress, to: accept.payTo, value: accept.amount, validAfter: String(validAfter), validBefore: String(validBefore), nonce },
 				},
 			};
@@ -1206,12 +1179,10 @@ class CheckoutModal {
 				result = text;
 			}
 			if (!res.ok) {
-				// A 429 here is a transient upstream throttle (e.g. the generator's
-				// create-prediction rate limit). The payment is signed but NOT yet
-				// settled — the merchant runs the work before settling — so the same
-				// X-PAYMENT can be safely re-sent once the window resets, with no risk
-				// of a double charge. Auto-retry a couple of times, respecting the
-				// server's Retry-After, before surfacing the manual "Try again".
+				// A 429 here is a transient upstream throttle. The payment is signed
+				// but NOT yet settled — the merchant runs the work before settling —
+				// so the same X-PAYMENT can be safely re-sent once the window resets,
+				// with no risk of a double charge.
 				if (res.status === 429 && attempt < MAX_THROTTLE_RETRIES) {
 					await this.waitForThrottle(retryAfterSeconds(res, result));
 					return this.executePaid(xPayment, attempt + 1);
@@ -1235,12 +1206,11 @@ class CheckoutModal {
 
 	// Hold the verify step on a live countdown while an upstream throttle resets,
 	// then return so the caller re-sends the same signed payment. The reservation
-	// is deliberately left intact — this is the same payment, not a new one — so
-	// no rollback runs between attempts.
+	// is deliberately left intact — this is the same payment, not a new one.
 	async waitForThrottle(seconds) {
 		const total = Math.max(1, Math.min(30, Math.round(seconds) || 6));
 		for (let left = total; left > 0; left--) {
-			this.renderProgress('verify', { text: `Generator is busy — retrying in ${left}s…` });
+			this.renderProgress('verify', { text: `Service is busy — retrying in ${left}s…` });
 			await new Promise((r) => setTimeout(r, 1000));
 		}
 		this.renderProgress('verify', { text: 'Retrying…' });
@@ -1372,9 +1342,9 @@ class CheckoutModal {
 		}
 
 		if (res.status === 401 || res.status === 402) {
-			// Most likely: signature verified but this wallet hasn't actually
-			// paid for the resource yet. Drop the SIWX offering and fall back
-			// to the normal payment flow with a one-line notice.
+			// Most likely: signature verified but this wallet hasn't actually paid
+			// for the resource yet. Drop the SIWX offering and fall back to the
+			// normal payment flow with a one-line notice.
 			let parsed = null;
 			try { parsed = await res.clone().json(); } catch (_) {}
 			const code = parsed?.code || parsed?.error;
@@ -1384,8 +1354,6 @@ class CheckoutModal {
 			this.siwxFallbackNotice = code === 'siwx_not_paid' || res.status === 402
 				? "You haven't paid for this yet — pay now to unlock re-entry."
 				: 'Sign-in not accepted — please pay to continue.';
-			// Re-render the wallet picker. If we had collected the 402 challenge
-			// already, this just re-runs renderConnect; otherwise we re-discover.
 			if (!this.challenge || !Array.isArray(this.challenge.accepts) || !this.challenge.accepts.length) {
 				this.start();
 			} else {
@@ -1428,22 +1396,18 @@ function retryAfterSeconds(res, result, fallback = 6) {
 
 function friendlyError(err) {
 	const msg = err?.shortMessage || err?.message || String(err);
-	// Trim ethers/viem long stacks, Phantom's RPC-error verbosity.
 	if (/user rejected|user denied|reject/i.test(msg)) return 'cancelled in wallet';
-	// Upstream throttles (e.g. a generator's create-prediction rate limit) often
-	// arrive as raw provider text that names the merchant's internal billing or
-	// credit state. Never relay that to the buyer: the payment isn't settled until
-	// the merchant call succeeds, so a clean, retryable message is both safer and
-	// more accurate than echoing the upstream's account internals.
+	// Upstream throttles often arrive as raw provider text that names the
+	// merchant's internal billing or credit state. Never relay that to the buyer:
+	// the payment isn't settled until the merchant call succeeds.
 	if (/throttl|rate.?limit|too many requests|less than \$|in credit|\b429\b/i.test(msg)) {
 		return 'The service is briefly busy and your payment was not taken — retry in a few seconds.';
 	}
-	// The Solana and EVM-sign-in paths dynamic-import a library from esm.sh. A strict
-	// host Content-Security-Policy (or esm.sh being unreachable) blocks that import and
-	// the raw "Failed to fetch dynamically imported module" is opaque. The Base/EIP-3009
-	// payment path has no such dependency, so steer the buyer there.
+	// The Solana and EVM-sign-in paths dynamic-import a library from a CDN. A
+	// strict host Content-Security-Policy (or the CDN being unreachable) blocks
+	// that import. The Base/EIP-3009 payment path has no such dependency.
 	if (/dynamically imported module|esm\.sh|module script failed/i.test(msg)) {
-		return 'A component this wallet path needs (loaded from esm.sh) was blocked — often by a strict host security policy. Pay with MetaMask on Base instead; it needs no third-party code.';
+		return 'A component this wallet path needs (loaded from a CDN) was blocked — often by a strict host security policy. Pay with MetaMask on Base instead; it needs no third-party code.';
 	}
 	return msg.slice(0, 240);
 }
@@ -1470,9 +1434,9 @@ function randomHex(bytes) {
 let _solanaWeb3 = null;
 async function loadSolanaWeb3() {
 	if (_solanaWeb3) return _solanaWeb3;
-	// Dynamic import from esm.sh keeps the drop-in script tiny — Solana web3.js
-	// is only fetched when a Solana payment is actually attempted.
-	_solanaWeb3 = await import(/* @vite-ignore */ CONFIG.esm.solanaWeb3);
+	// Dynamic import from a CDN keeps the drop-in script tiny — Solana web3.js is
+	// only fetched when a Solana payment is actually attempted.
+	_solanaWeb3 = await import(/* @vite-ignore */ config.solanaWeb3Url);
 	return _solanaWeb3;
 }
 
@@ -1498,9 +1462,9 @@ async function postJson(url, body) {
 	return data;
 }
 
-// Probe the merchant endpoint with a benign request to extract the 402 challenge.
-// Accepts HTTP 402 (standard x402) or HTTP 401 with a `payment-required` header
-// (MCP 2025-06-18 spec, which uses 401 for resource-server authorization challenges).
+// Probe the merchant endpoint with a benign request to extract the 402
+// challenge. Accepts HTTP 402 (standard x402) or HTTP 401 with a
+// `payment-required` header (MCP 2025-06-18 spec).
 async function discoverChallenge(opts) {
 	const headers = { ...(opts.headers || {}) };
 	const init = {
@@ -1517,21 +1481,17 @@ async function discoverChallenge(opts) {
 	const is401WithChallenge = res.status === 401 && !!prHeader;
 
 	if (res.status !== 402 && !is401WithChallenge) {
-		// Endpoint isn't paid (200) or isn't an x402 endpoint at all. In either
-		// case, surface a clear error — accidentally pointing the modal at a
-		// free endpoint should not silently succeed.
+		// Endpoint isn't paid (200) or isn't an x402 endpoint at all. Surface a
+		// clear error — pointing the modal at a free endpoint should not silently
+		// succeed.
 		const txt = await res.text();
 		throw new Error(`Endpoint did not return 402 (got ${res.status}). Body: ${txt.slice(0, 120)}`);
 	}
 
-	// For 401+header, decode directly — the full envelope is in the header.
-	// For 402, read body first and fall back to header if body is minimal.
 	let body = is401WithChallenge ? b64decode(prHeader) : await res.json().catch(() => null);
 	if (!body || !Array.isArray(body.accepts) || !body.accepts.length) {
-		// send402 (api/_lib/x402-spec.js) only emits `{error}` in the body and
-		// puts the full v2 PaymentRequired envelope (accepts + extensions) in
-		// the base64-JSON PAYMENT-REQUIRED header. b64decode returns already-
-		// parsed JSON, so use its result directly.
+		// Some servers only emit `{error}` in the body and put the full v2
+		// PaymentRequired envelope in the base64-JSON PAYMENT-REQUIRED header.
 		const decoded = b64decode(prHeader);
 		if (decoded && Array.isArray(decoded.accepts) && decoded.accepts.length) {
 			body = decoded;
@@ -1540,18 +1500,53 @@ async function discoverChallenge(opts) {
 	if (!body || !Array.isArray(body.accepts) || !body.accepts.length) {
 		throw new Error('Endpoint returned 402 but no `accepts` array could be found in body or header');
 	}
+	// Coerce spec-canonical `maxAmountRequired` → `amount` so downstream price /
+	// caps / signing read one field.
+	body.accepts = body.accepts.map(normalizeAccept);
 	return body;
 }
 
 // ───────────────────────────────────────────────────────── public api ───────
 
+/**
+ * Open the payment modal for an x402 endpoint and resolve when the call
+ * succeeds (after settlement) or reject if the user cancels.
+ * @param {import('../types/index.js').PayOptions} opts
+ * @returns {Promise<import('../types/index.js').PayResult>}
+ */
 export async function pay(opts) {
 	if (!opts?.endpoint) throw new Error('X402.pay: endpoint is required');
 	const modal = new CheckoutModal(opts);
 	const result = modal.mount();
-	// kick off the discovery on next tick so the modal animates in first.
+	// Kick off discovery on the next tick so the modal animates in first.
 	queueMicrotask(() => modal.start());
 	return result;
+}
+
+function readOptsFrom(el) {
+	const ds = el.dataset;
+	let body = ds.x402Body;
+	if (body) {
+		try { body = JSON.parse(body); } catch { /* keep as string */ }
+	}
+	let headers = ds.x402Headers;
+	if (headers) {
+		try { headers = JSON.parse(headers); } catch { headers = undefined; }
+	}
+	let caps = ds.x402Caps;
+	if (caps) {
+		try { caps = JSON.parse(caps); } catch { caps = undefined; }
+	}
+	return {
+		endpoint: ds.x402Endpoint,
+		method: ds.x402Method || (body ? 'POST' : 'GET'),
+		body,
+		headers,
+		caps,
+		apiOrigin: ds.x402ApiOrigin,
+		merchant: ds.x402Merchant,
+		action: ds.x402Action || el.textContent?.trim().slice(0, 60),
+	};
 }
 
 function bindElement(el) {
@@ -1573,43 +1568,10 @@ function bindElement(el) {
 	});
 }
 
-function readOptsFrom(el) {
-	const ds = el.dataset;
-	let body = ds.x402Body;
-	if (body) {
-		try { body = JSON.parse(body); } catch { /* keep as string */ }
-	}
-	let headers = ds.x402Headers;
-	if (headers) {
-		try { headers = JSON.parse(headers); } catch { headers = undefined; }
-	}
-	return {
-		endpoint: ds.x402Endpoint,
-		method: ds.x402Method || (body ? 'POST' : 'GET'),
-		body,
-		headers,
-		merchant: ds.x402Merchant,
-		action: ds.x402Action || el.textContent?.trim().slice(0, 60),
-	};
-}
-
+/** Scan the document and bind every `[data-x402-endpoint]` element. Idempotent. */
 export function init() {
+	if (typeof document === 'undefined') return;
 	document.querySelectorAll('[data-x402-endpoint]').forEach(bindElement);
 }
 
-// Auto-init on DOMContentLoaded, plus on demand.
-if (typeof document !== 'undefined') {
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', init, { once: true });
-	} else {
-		init();
-	}
-	// Re-scan when merchants dynamically inject buttons.
-	const mo = new MutationObserver(() => init());
-	mo.observe(document.documentElement, { childList: true, subtree: true });
-}
-
-// Expose to merchants' inline scripts.
-if (typeof window !== 'undefined') {
-	window.X402 = Object.freeze({ pay, init, version: VERSION });
-}
+export { VERSION as version, bindElement, readOptsFrom };
