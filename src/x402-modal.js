@@ -20,6 +20,22 @@
 // response }. Vanilla JS; the only network deps (Solana web3.js, a keccak for
 // EVM SIWX) are dynamic-imported from a CDN, and only when that path runs.
 
+import {
+	EVM_NETWORKS,
+	normalizeAccept,
+	isSolanaNetwork,
+	isEip3009Accept,
+	networkLabel,
+	explorerUrl,
+	formatAmount,
+	b64encode,
+	b64decode,
+	base58encode,
+	toMicroUsd,
+	spendBuckets,
+	buildSiwxMessage,
+} from './util.js';
+
 const VERSION = '0.2.0';
 
 // ─────────────────────────────────────────────────────────── configuration ───
