@@ -123,76 +123,6 @@ function apiOriginFor(opts) {
 const SIWX_HEADER = 'SIGN-IN-WITH-X';
 const SIWX_EXTENSION_KEY = 'sign-in-with-x';
 
-// USDC EIP-3009 typed-data sig works against Base USDC at this address. The
-// domain `version` must match the on-chain `EIP712_DOMAIN_SEPARATOR_VERSION`
-// of the deployed USDC implementation — Base USDC is at version "2".
-const EVM_NETWORKS = {
-	'eip155:8453': { chainId: 8453, name: 'Base', explorer: 'https://basescan.org/tx/' },
-	'eip155:84532': { chainId: 84532, name: 'Base Sepolia', explorer: 'https://sepolia.basescan.org/tx/' },
-	'eip155:42161': { chainId: 42161, name: 'Arbitrum', explorer: 'https://arbiscan.io/tx/' },
-	'eip155:10': { chainId: 10, name: 'Optimism', explorer: 'https://optimistic.etherscan.io/tx/' },
-};
-
-// Normalize a single 402 `accept` entry to the shape the modal speaks
-// internally. The x402 spec's canonical atomic-price field is
-// `maxAmountRequired`; some merchants emit `amount`. We read `amount`
-// everywhere downstream, so coerce here once at ingestion. Without this, a
-// spec-compliant merchant yields `accept.amount === undefined` → "NaN USDC".
-function normalizeAccept(accept) {
-	if (!accept || typeof accept !== 'object') return accept;
-	const amount = accept.amount ?? accept.maxAmountRequired;
-	return amount != null && accept.amount == null ? { ...accept, amount: String(amount) } : accept;
-}
-
-function isSolanaNetwork(net) {
-	return typeof net === 'string' && (net === 'solana' || net.startsWith('solana:'));
-}
-function isEvmNetwork(net) {
-	return typeof net === 'string' && net.startsWith('eip155:');
-}
-// The modal only signs EIP-3009 transferWithAuthorization for EVM. When the
-// server publishes both an EIP-3009 entry and a Permit2 sibling (the
-// gas-sponsoring path used by @x402/evm SDK clients), we must pick the
-// EIP-3009 one. The sibling carries `extra.assetTransferMethod === 'permit2'`.
-function isEip3009Accept(accept) {
-	if (!isEvmNetwork(accept?.network)) return false;
-	const method = accept?.extra?.assetTransferMethod;
-	return !method || method === 'eip3009';
-}
-function networkLabel(net, accept) {
-	if (isSolanaNetwork(net)) return 'Solana';
-	const meta = EVM_NETWORKS[net];
-	return meta?.name || accept?.extra?.name || net;
-}
-function explorerUrl(net, tx) {
-	if (!tx) return null;
-	if (isSolanaNetwork(net)) return `https://solscan.io/tx/${tx}`;
-	const meta = EVM_NETWORKS[net];
-	return meta ? `${meta.explorer}${tx}` : null;
-}
-
-function formatAmount(rawAtomics, decimals = 6) {
-	const n = Number(rawAtomics) / 10 ** decimals;
-	if (n < 0.01) return n.toFixed(6).replace(/0+$/, '').replace(/\.$/, '');
-	if (n < 1) return n.toFixed(4).replace(/0+$/, '').replace(/\.$/, '');
-	return n.toFixed(2);
-}
-
-function b64encode(obj) {
-	const json = JSON.stringify(obj);
-	if (typeof Buffer !== 'undefined') return Buffer.from(json, 'utf8').toString('base64');
-	return btoa(unescape(encodeURIComponent(json)));
-}
-function b64decode(str) {
-	if (!str) return null;
-	try {
-		const bin = typeof Buffer !== 'undefined' ? Buffer.from(str, 'base64').toString('utf8') : decodeURIComponent(escape(atob(str)));
-		return JSON.parse(bin);
-	} catch (_) {
-		return null;
-	}
-}
-
 // ──────────────────────────────────────────────────────── Spending caps ─────
 // Persists per-wallet spend in localStorage so reload-survivable caps work in a
 // pure-browser context. Keys are bucketed by UTC hour and UTC day so the
@@ -201,15 +131,6 @@ function b64decode(str) {
 // through as-is since their atomics are already 6-decimal USD-pegged.
 
 const SPEND_LS_PREFIX = 'x402.spend.';
-const STABLE_NAMES = new Set([
-	'usdc', 'usd coin', 'usdt', 'tether', 'binance-peg usd coin', 'dai',
-]);
-
-function spendBuckets(timestamp = Date.now()) {
-	const hour = Math.floor(timestamp / 3_600_000);
-	const day = Math.floor(timestamp / 86_400_000);
-	return { hour, day };
-}
 
 function spendKey(address, kind, bucket) {
 	return `${SPEND_LS_PREFIX}${kind}.${address.toLowerCase()}.${bucket}`;
@@ -233,27 +154,12 @@ function writeSpend(address, kind, bucket, value) {
 	}
 }
 
-function toMicroUsdBrowser(amount, accept) {
-	const atomic = BigInt(amount);
-	const decimals = Number(accept?.extra?.decimals ?? 6);
-	const name = String(accept?.extra?.name || '').toLowerCase();
-	if (STABLE_NAMES.has(name)) {
-		if (decimals === 6) return atomic;
-		if (decimals > 6) return atomic / 10n ** BigInt(decimals - 6);
-		return atomic * 10n ** BigInt(6 - decimals);
-	}
-	// Non-stable in the browser modal: we don't fetch live prices to keep the
-	// drop-in script dependency-free. Cap enforcement for non-stable assets must
-	// be done server-side.
-	return atomic;
-}
-
 // Check the configured caps and, if admitted, reserve the spend in localStorage.
 // Returns { abort, reason?, reservation? }. Reservation carries { address,
 // microUsd, buckets } so a failed payment can roll the reservation back.
 function browserEnforceCap({ accept, caps, address }) {
 	if (!caps || !address) return { abort: false };
-	const microUsd = toMicroUsdBrowser(accept.amount, accept);
+	const microUsd = toMicroUsd(accept.amount, accept);
 	const maxPerCall = caps.maxPerCall != null ? BigInt(caps.maxPerCall) : null;
 	const maxPerHour = caps.maxPerHour != null ? BigInt(caps.maxPerHour) : null;
 	const maxPerDay = caps.maxPerDay != null ? BigInt(caps.maxPerDay) : null;
@@ -323,66 +229,12 @@ function pickSiwxChain(ext, walletKind) {
 	return null;
 }
 
-// Build the CAIP-122 message string. The server rebuilds the same string from
-// payload fields when verifying — any line-by-line drift makes the recovered
-// signer mismatch payload.address and the signature is rejected.
-function buildSiwxMessage(info, chain, address) {
-	const isEvm = chain.type === 'eip191';
-	const accountHeader = isEvm
-		? `${info.domain} wants you to sign in with your Ethereum account:`
-		: `${info.domain} wants you to sign in with your Solana account:`;
-	const [, chainTail = ''] = String(chain.chainId).split(':');
-	const chainRef = isEvm ? String(parseInt(chainTail, 10)) : chainTail;
-
-	const lines = [accountHeader, address, ''];
-	if (info.statement) {
-		lines.push(info.statement, '');
-	} else if (isEvm) {
-		// siwe's prepareMessage() reserves the statement block even when the
-		// statement is absent, emitting an extra blank line. SIWS does not. The
-		// server rebuilds the EVM message via siwe before recovering the signer,
-		// so omit-statement EVM must carry the same extra blank.
-		lines.push('');
-	}
-	lines.push(`URI: ${info.uri}`);
-	lines.push(`Version: ${info.version || '1'}`);
-	lines.push(`Chain ID: ${chainRef}`);
-	lines.push(`Nonce: ${info.nonce}`);
-	lines.push(`Issued At: ${info.issuedAt}`);
-	if (info.expirationTime) lines.push(`Expiration Time: ${info.expirationTime}`);
-	if (info.notBefore) lines.push(`Not Before: ${info.notBefore}`);
-	if (info.requestId !== undefined && info.requestId !== null) lines.push(`Request ID: ${info.requestId}`);
-	if (Array.isArray(info.resources) && info.resources.length) {
-		lines.push('Resources:');
-		for (const r of info.resources) lines.push(`- ${r}`);
-	}
-	return lines.join('\n');
-}
-
 // Base64-encoded JSON per x402 v2 spec. CAIP-122 fields are all ASCII/Latin-1,
 // so the unescape+encodeURIComponent dance matches what btoa expects.
 function encodeSiwxHeaderValue(payload) {
 	const json = JSON.stringify(payload);
 	if (typeof Buffer !== 'undefined') return Buffer.from(json, 'utf8').toString('base64');
 	return btoa(unescape(encodeURIComponent(json)));
-}
-
-// Base58 (Bitcoin alphabet) — Solana's encoding for both addresses and
-// signatures. Inlined here to avoid pulling in a bundler dependency.
-const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-function base58encode(bytes) {
-	if (!bytes || bytes.length === 0) return '';
-	let leadingZeros = 0;
-	while (leadingZeros < bytes.length && bytes[leadingZeros] === 0) leadingZeros++;
-	let n = 0n;
-	for (let i = 0; i < bytes.length; i++) n = (n << 8n) | BigInt(bytes[i]);
-	let out = '';
-	while (n > 0n) {
-		out = BASE58_ALPHABET[Number(n % 58n)] + out;
-		n /= 58n;
-	}
-	for (let i = 0; i < leadingZeros; i++) out = BASE58_ALPHABET[0] + out;
-	return out;
 }
 
 // EIP-55 checksum the address before signing. MetaMask returns lowercase
