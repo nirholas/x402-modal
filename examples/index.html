@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>@three-ws/x402-modal — demo</title>
+	<style>
+		:root { color-scheme: light dark; }
+		* { box-sizing: border-box; }
+		body {
+			margin: 0; font: 16px/1.6 -apple-system, system-ui, sans-serif;
+			background: #0b0c10; color: #e9eaf0;
+			min-height: 100vh; padding: 64px 24px 120px;
+		}
+		main { max-width: 680px; margin: 0 auto; }
+		h1 { font-size: 36px; line-height: 1.1; margin: 0 0 8px; letter-spacing: -0.02em; }
+		.lede { font-size: 18px; color: #aab; margin: 0 0 36px; }
+		h2 { font-size: 20px; margin: 40px 0 10px; }
+		p { color: #c7c9d6; }
+		code { background: #15161e; padding: 2px 6px; border-radius: 6px; font-size: 14px; }
+		.card {
+			background: #12131b; border: 1px solid #23252f; border-radius: 16px;
+			padding: 22px; margin: 16px 0;
+		}
+		button.cta {
+			cursor: pointer; border: none; border-radius: 12px;
+			background: linear-gradient(135deg, #0a84ff, #0066d6); color: #fff;
+			padding: 13px 20px; font: inherit; font-weight: 700; letter-spacing: -0.01em;
+		}
+		button.cta:hover { filter: brightness(1.08); }
+		pre {
+			background: #0e0f16; border: 1px solid #23252f; border-radius: 12px;
+			padding: 14px; overflow: auto; font-size: 13px; color: #cfd2e3;
+			margin-top: 14px; white-space: pre-wrap; word-break: break-word;
+		}
+		.muted { color: #7b7f93; font-size: 13px; }
+		.err { color: #f87171; }
+	</style>
+</head>
+<body>
+	<main>
+		<h1>@three-ws/x402-modal</h1>
+		<p class="lede">A drop-in payment modal for any x402 paid endpoint. Two ways to wire it, both below.</p>
+
+		<h2>1 — Declarative (<code>data-x402-*</code>)</h2>
+		<p>The button below is bound automatically by the global script. Point
+			<code>data-x402-endpoint</code> at your own x402 route to try it live.</p>
+		<div class="card">
+			<button
+				class="cta"
+				id="declarative"
+				data-x402-endpoint="https://three.ws/api/x402/dance-tip?dancer=1&dance=rumba"
+				data-x402-merchant="three.ws"
+				data-x402-action="Tip a dancer">
+				Pay &amp; tip
+			</button>
+			<pre id="declarative-out" class="muted">result will appear here…</pre>
+		</div>
+
+		<h2>2 — Programmatic (<code>pay()</code>)</h2>
+		<p>Call <code>pay()</code> from your own handler and await the result.</p>
+		<div class="card">
+			<button class="cta" id="programmatic">Pay with pay()</button>
+			<pre id="programmatic-out" class="muted">result will appear here…</pre>
+		</div>
+
+		<p class="muted">
+			This page loads the local build at <code>../dist/x402.global.js</code>.
+			Run <code>npm run build</code> in the package root first, then serve this
+			folder (e.g. <code>npx serve</code>) and open it. The demo endpoint is a
+			live three.ws x402 route; swap it for your own.
+		</p>
+	</main>
+
+	<!-- Local build. In production, use the CDN:
+	     <script type="module" src="https://unpkg.com/@three-ws/x402-modal/global"></script> -->
+	<script type="module" src="../dist/x402.global.js"></script>
+
+	<script type="module">
+		import { pay } from '../dist/x402-modal.mjs';
+
+		// Declarative button → listen for the DOM events the global build fires.
+		const dEl = document.getElementById('declarative');
+		const dOut = document.getElementById('declarative-out');
+		dEl.addEventListener('x402:result', (e) => {
+			dOut.classList.remove('muted', 'err');
+			dOut.textContent = JSON.stringify(e.detail.result, null, 2);
+		});
+		dEl.addEventListener('x402:error', (e) => {
+			dOut.classList.add('err');
+			dOut.textContent = 'Error: ' + e.detail.error;
+		});
+
+		// Programmatic button → await pay().
+		const pOut = document.getElementById('programmatic-out');
+		document.getElementById('programmatic').addEventListener('click', async () => {
+			pOut.className = 'muted';
+			pOut.textContent = 'opening modal…';
+			try {
+				const out = await pay({
+					endpoint: 'https://three.ws/api/x402/dance-tip?dancer=1&dance=rumba',
+					merchant: 'three.ws',
+					action: 'Tip a dancer',
+				});
+				pOut.className = '';
+				pOut.textContent = JSON.stringify({ result: out.result, payment: out.payment }, null, 2);
+			} catch (e) {
+				if (e.code === 'cancelled') { pOut.className = 'muted'; pOut.textContent = 'cancelled.'; return; }
+				pOut.className = 'err';
+				pOut.textContent = 'Error: ' + e.message;
+			}
+		});
+	</script>
+</body>
+</html>
