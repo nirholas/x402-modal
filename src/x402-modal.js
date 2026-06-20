@@ -1,9 +1,10 @@
 // @three-ws/x402-modal — a drop-in payment modal for any x402 paid endpoint.
 //
 // This is the canonical, side-effect-free core. It exports the public API
-// (`pay`, `init`, `configure`, `siwx`, `version`, `CheckoutModal`) but does NOT
-// touch `window` or auto-bind anything on import — that lives in `global.js`,
-// which is what the CDN <script> build ships.
+// (`pay`, `init`, `configure`, `getConfig`, `version`, `CheckoutModal`, and the
+// declarative helpers `bindElement` / `readOptsFrom`) but does NOT touch
+// `window` or auto-bind anything on import — that lives in `global.js`, which is
+// what the CDN <script> build ships.
 //
 // Bundler / npm usage:
 //
