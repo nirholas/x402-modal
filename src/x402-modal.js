@@ -840,12 +840,15 @@ export class CheckoutModal {
 			this.siwx = extractSiwxExtension(challenge);
 			this.payFlowOverride = false;
 			this.siwxFallbackNotice = null;
-			// Prefer Solana when Phantom is present, else first EIP-3009 EVM entry
-			// (skipping Permit2 siblings the modal can't sign for), else first accept.
+			// Solana-first platform default: select the Solana accept by default
+			// whenever one is offered, regardless of which wallet is detected —
+			// renderConnect() still shows both wallet buttons (Solana listed
+			// first), so EVM users simply click the EVM option. Falls back to the
+			// first EIP-3009 EVM entry (skipping Permit2 siblings the modal can't
+			// sign for), then the first accept.
 			const solana = challenge.accepts.find((a) => isSolanaNetwork(a.network));
 			const evm = challenge.accepts.find(isEip3009Accept);
-			const phantomDetected = typeof window !== 'undefined' && (window.solana?.isPhantom || window.phantom?.solana);
-			this.accept = (phantomDetected && solana) || evm || challenge.accepts[0];
+			this.accept = solana || evm || challenge.accepts[0];
 			this.setPrice(this.accept);
 			this.renderConnect();
 		} catch (err) {
