@@ -9,6 +9,11 @@ Three ways to configure, in increasing specificity (later wins):
 Defaults are vendor-neutral: an un-configured drop-in shows no footer
 attribution and echoes no builder code. Set `brand` and `builderCode` to opt in.
 
+> The public API (`pay`, `configure`, `getConfig`, `init`, `bindElement`,
+> `readOptsFrom`, `version`, `CheckoutModal`) is documented in the
+> [README API reference](../README.md#api-reference). The `/global` CDN build
+> additionally exposes `window.X402 = { pay, init, configure, version }`.
+
 ---
 
 ## `configure(config)` / `getConfig()`
@@ -103,4 +108,13 @@ with full `prefers-color-scheme` light/dark support and a `prefers-reduced-motio
 ```
 
 The footer text/link is set by `brand`; the two header lines by
-`merchant` / `action`.
+`merchant` / `action`. The full list of `.x402-*` hooks and a dark-mode note are
+in the [README theming section](../README.md#theming--styling-hooks).
+
+---
+
+## See also
+
+- [`EXAMPLES.md`](./EXAMPLES.md) — runnable recipes per framework.
+- [`BACKEND.md`](./BACKEND.md) — the Solana `prepare`/`encode` helper contract.
+- [`PROTOCOL.md`](./PROTOCOL.md) — the four-step `402 → sign → settle` flow.

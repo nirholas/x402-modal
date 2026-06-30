@@ -53,8 +53,10 @@
 		"src",
 		"types",
 		"docs",
+		"examples",
 		"README.md",
 		"TUTORIAL.md",
+		"CONTRIBUTING.md",
 		"LICENSE"
 	],
 	"scripts": {
