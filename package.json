@@ -57,7 +57,8 @@
 		"README.md",
 		"TUTORIAL.md",
 		"CONTRIBUTING.md",
-		"LICENSE"
+		"LICENSE",
+		"CHANGELOG.md"
 	],
 	"scripts": {
 		"build": "node build.mjs",
