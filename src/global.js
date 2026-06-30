@@ -1,4 +1,4 @@
-// @three-ws/x402-modal — global / CDN entry.
+// @nirholas/x402-modal — global / CDN entry.
 //
 // This is the side-effectful build that ships as the drop-in <script>. It:
 //   1. reads `data-x402-*` config off its own <script> tag (apiOrigin, brand,
@@ -9,7 +9,7 @@
 //   3. exposes `window.X402 = { pay, init, configure, version }`.
 //
 // For bundler / npm consumers, import the side-effect-free core instead:
-//   import { pay, configure } from '@three-ws/x402-modal';
+//   import { pay, configure } from '@nirholas/x402-modal';
 
 import { pay, init, configure, version } from './x402-modal.js';
 

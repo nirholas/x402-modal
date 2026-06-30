@@ -1,4 +1,4 @@
-# Tutorials — @three-ws/x402-modal
+# Tutorials — @nirholas/x402-modal
 
 Hands-on, copy-paste walkthroughs. Each one is self-contained and ends with
 something running. Pick the path that matches your stack:
@@ -47,7 +47,7 @@ array describing a Base USDC payment. A minimal challenge body looks like:
 ### 2. Add the modal to your page
 
 ```html
-<script type="module" src="https://unpkg.com/@three-ws/x402-modal/global"></script>
+<script type="module" src="https://unpkg.com/@nirholas/x402-modal/global"></script>
 
 <button
   data-x402-endpoint="https://api.acme.com/paid/summarize"
@@ -87,12 +87,12 @@ result renders.
 get the result back as a promise.
 
 ```sh
-npm i @three-ws/x402-modal
+npm i @nirholas/x402-modal
 ```
 
 ```jsx
 // React example
-import { pay } from '@three-ws/x402-modal';
+import { pay } from '@nirholas/x402-modal';
 
 function BuyButton({ text }) {
   const [out, setOut] = useState(null);
@@ -135,7 +135,7 @@ The ESM import has **no side effects** — it won't scan the DOM or touch
 **Goal:** blur premium content until the visitor pays, then reveal it.
 
 ```html
-<script type="module" src="https://unpkg.com/@three-ws/x402-modal/global"></script>
+<script type="module" src="https://unpkg.com/@nirholas/x402-modal/global"></script>
 
 <article id="premium" class="locked">
   <div class="blurred">…premium article body…</div>
@@ -192,7 +192,7 @@ Grab `x402.global.js` from the package's `dist/` (or build it with
 Prefer JS? Configure before the first payment:
 
 ```js
-import { configure } from '@three-ws/x402-modal';
+import { configure } from '@nirholas/x402-modal';
 
 configure({
   apiOrigin: 'https://pay.acme.com',
@@ -240,7 +240,7 @@ straight there.
 cap how much it can spend per call / hour / day.
 
 ```js
-import { pay } from '@three-ws/x402-modal';
+import { pay } from '@nirholas/x402-modal';
 
 await pay({
   endpoint: '/api/paid/inference',
@@ -278,4 +278,4 @@ reservation back so it doesn't count against the budget.
 | **`pay()` rejected but nothing went wrong** | The user closed the modal: the rejection's `.code === 'cancelled'`. Treat it as a no-op, not an error. |
 
 Still stuck? Open an issue at
-<https://github.com/nirholas/three.ws/issues>.
+<https://github.com/nirholas/x402-modal/issues>.

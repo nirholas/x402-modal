@@ -1,6 +1,6 @@
 <div align="center">
 
-# @three-ws/x402-modal
+# @nirholas/x402-modal
 
 **A drop-in payment modal for any [x402](https://x402.org) paid endpoint.**
 
@@ -9,10 +9,10 @@ wallet connect (Phantom on Solana, MetaMask/EVM via EIP-3009), the
 `402 → sign → settle` flow, SIWX re-entry, spending caps, and a receipt — all
 in **vanilla JS, with no bundler and no framework**.
 
-[![npm](https://img.shields.io/npm/v/@three-ws/x402-modal?logo=npm&color=cb3837)](https://www.npmjs.com/package/@three-ws/x402-modal)
-[![downloads](https://img.shields.io/npm/dm/@three-ws/x402-modal?color=cb3837)](https://www.npmjs.com/package/@three-ws/x402-modal)
-![license](https://img.shields.io/npm/l/@three-ws/x402-modal?color=3b82f6)
-![node](https://img.shields.io/node/v/@three-ws/x402-modal?color=339933&logo=node.js)
+[![npm](https://img.shields.io/npm/v/@nirholas/x402-modal?logo=npm&color=cb3837)](https://www.npmjs.com/package/@nirholas/x402-modal)
+[![downloads](https://img.shields.io/npm/dm/@nirholas/x402-modal?color=cb3837)](https://www.npmjs.com/package/@nirholas/x402-modal)
+![license](https://img.shields.io/npm/l/@nirholas/x402-modal?color=3b82f6)
+![node](https://img.shields.io/node/v/@nirholas/x402-modal?color=339933&logo=node.js)
 
 [Quick start](#quick-start) · [How it works](#how-it-works) · [API](#api) · [Configuration](#configuration) · [Backend](#the-backend) · [Tutorials](./TUTORIAL.md) · [FAQ](#faq)
 
@@ -40,7 +40,7 @@ client-side. The Solana path needs one small backend helper (see
 ### 1 — One script tag (zero JS)
 
 ```html
-<script type="module" src="https://unpkg.com/@three-ws/x402-modal/global"></script>
+<script type="module" src="https://unpkg.com/@nirholas/x402-modal/global"></script>
 
 <button
   data-x402-endpoint="https://api.example.com/paid/summarize"
@@ -64,7 +64,7 @@ document.querySelector('button').addEventListener('x402:result', (e) => {
 ### 2 — Programmatic (full control)
 
 ```js
-import { pay } from '@three-ws/x402-modal';
+import { pay } from '@nirholas/x402-modal';
 
 const out = await pay({
   endpoint: '/api/paid/summarize',
@@ -95,7 +95,7 @@ whose `.code === 'cancelled'` if the user closes the modal.
 or from JS, before the first `pay()`:
 
 ```js
-import { configure } from '@three-ws/x402-modal';
+import { configure } from '@nirholas/x402-modal';
 
 configure({
   apiOrigin: 'https://pay.your-company.com',     // Solana checkout backend
@@ -190,7 +190,8 @@ Bound elements dispatch bubbling `CustomEvent`s:
 
 ## Configuration
 
-All fields are optional; the defaults reproduce the hosted three.ws modal.
+All fields are optional. Defaults are vendor-neutral — no footer attribution and
+no builder-code echo until you set `brand` / `builderCode`.
 
 ```js
 configure({
@@ -199,11 +200,11 @@ configure({
   // script's own origin; '' → same-origin.
   apiOrigin: 'https://pay.example.com',
 
-  // Footer attribution.
+  // Footer attribution. Defaults to null (hidden); set { label, href? } to show.
   brand: { label: 'Powered by Acme', href: 'https://acme.com' },
 
   // ERC-8021 builder-code self-attribution, echoed back only when the 402
-  // challenge declares a builder code. null disables the echo.
+  // challenge declares a builder code. Defaults to null (no echo).
   builderCode: { wallet: 'acme', service: 'acme_checkout' },
 
   // Override the on-demand CDN modules (e.g. to self-host under a strict CSP).
@@ -257,11 +258,11 @@ implementation, and [`examples/`](./examples) for runnable code.
 ## Install
 
 ```sh
-npm i @three-ws/x402-modal
+npm i @nirholas/x402-modal
 ```
 
 ```js
-import { pay, configure } from '@three-ws/x402-modal';   // ESM, no side effects
+import { pay, configure } from '@nirholas/x402-modal';   // ESM, no side effects
 ```
 
 or skip the install entirely and use the CDN `/global` build (auto-binds
@@ -296,11 +297,10 @@ fee-payer.
 a React/Vue/Svelte handler, or drop the `/global` script and use `data-*`
 buttons.
 
-**Where does this run in production?** This is the same modal that powers
-payments on [three.ws](https://three.ws); the package is its standalone,
-configurable home.
+**Where does this run in production?** Anywhere you have an x402-protected
+endpoint. It's origin-agnostic: the `402 → sign → settle` flow works against any
+merchant. (One deployment that uses it in production is [three.ws](https://three.ws).)
 
 ## License
 
-[Apache-2.0](./LICENSE) © three.ws. Part of the [three.ws](https://three.ws)
-platform for building, animating, rigging, and monetizing 3D AI agents.
+[Apache-2.0](./LICENSE) © nirholas.

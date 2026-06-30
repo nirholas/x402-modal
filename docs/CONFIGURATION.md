@@ -6,15 +6,15 @@ Three ways to configure, in increasing specificity (later wins):
 2. **`configure({ … })`** — global defaults, set once at startup.
 3. **`pay({ … })` options** — per-call overrides.
 
-All defaults reproduce the hosted three.ws modal, so an un-configured drop-in
-behaves exactly like `https://three.ws/x402.js`.
+Defaults are vendor-neutral: an un-configured drop-in shows no footer
+attribution and echoes no builder code. Set `brand` and `builderCode` to opt in.
 
 ---
 
 ## `configure(config)` / `getConfig()`
 
 ```js
-import { configure, getConfig } from '@three-ws/x402-modal';
+import { configure, getConfig } from '@nirholas/x402-modal';
 configure({ apiOrigin: 'https://pay.example.com' });
 getConfig(); // → fully-resolved snapshot
 ```
@@ -22,14 +22,14 @@ getConfig(); // → fully-resolved snapshot
 | field | type | default | purpose |
 |---|---|---|---|
 | `apiOrigin` | `string \| null` | `null` → script origin | Origin of the Solana `prepare`/`encode` helper. `''` = same-origin. Ignored by the EVM path. |
-| `brand` | `{ label?, href? }` | `Powered by three.ws` → `https://three.ws` | Footer attribution. Merge-updated (set only `label` and `href` survives). |
-| `builderCode` | `{ wallet?, service? } \| null` | `{ wallet: '3d_agent', service: '3d_agent_modal' }` | ERC-8021 self-attribution echoed when the `402` declares a builder code. `null` disables the echo. Codes must match `^[a-z0-9_]{1,32}$`. |
+| `brand` | `{ label?, href? } \| null` | `null` (hidden) | Footer attribution. `null` hides the footer link; set `{ label, href? }` to show it. Merge-updated (set only `label` and `href` survives). |
+| `builderCode` | `{ wallet?, service? } \| null` | `null` (no echo) | ERC-8021 self-attribution echoed when the `402` declares a builder code. `null` disables the echo. Codes must match `^[a-z0-9_]{1,32}$`. |
 | `solanaWeb3Url` | `string` | `esm.sh/@solana/web3.js@1.95.3` | CDN module dynamic-imported on the Solana path. Repoint to self-host under a strict CSP. |
 | `nobleHashesUrl` | `string` | `esm.sh/@noble/hashes@1.4.0/sha3` | CDN keccak module, used only for EVM SIWX sign-in. |
 
 `configure()` merges: `configure({ brand: { label: 'X' } })` keeps the existing
 `href`. Pass `apiOrigin: null` to reset to script-origin resolution; pass
-`builderCode: null` to switch the echo off.
+`brand: null` to hide the footer, or `builderCode: null` to switch the echo off.
 
 ---
 

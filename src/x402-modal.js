@@ -1,4 +1,4 @@
-// @three-ws/x402-modal — a drop-in payment modal for any x402 paid endpoint.
+// @nirholas/x402-modal — a drop-in payment modal for any x402 paid endpoint.
 //
 // This is the canonical, side-effect-free core. It exports the public API
 // (`pay`, `init`, `configure`, `getConfig`, `version`, `CheckoutModal`, and the
@@ -8,12 +8,12 @@
 //
 // Bundler / npm usage:
 //
-//   import { pay, configure } from '@three-ws/x402-modal';
+//   import { pay, configure } from '@nirholas/x402-modal';
 //   const out = await pay({ endpoint: '/api/paid/summarize', body: { text: 'hi' } });
 //
 // Drop-in <script> usage (the global build auto-binds `data-x402-endpoint`):
 //
-//   <script type="module" src="https://unpkg.com/@three-ws/x402-modal/global"></script>
+//   <script type="module" src="https://unpkg.com/@nirholas/x402-modal/global"></script>
 //   <button data-x402-endpoint="/api/paid/summarize" data-x402-method="POST">Pay & run</button>
 //
 // The modal drives the full 402 → connect wallet → sign → retry → settle flow,
@@ -40,10 +40,10 @@ import {
 const VERSION = '0.2.0';
 
 // ─────────────────────────────────────────────────────────── configuration ───
-// Everything the host wants to brand or repoint lives here. Defaults reproduce
-// three.ws's hosted behaviour exactly, so the drop-in script is unchanged; a
-// standalone deployment overrides them with `configure()` (global) or per-call
-// `pay({ ... })` options (which always win over the global config).
+// Everything the host wants to brand or repoint lives here. The defaults are
+// vendor-neutral: no footer attribution and no builder-code echo until the host
+// opts in. A deployment supplies its own branding with `configure()` (global)
+// or per-call `pay({ ... })` options (which always win over the global config).
 
 const DEFAULTS = {
 	// Origin that serves the Solana `prepare` / `encode` checkout helpers
@@ -51,12 +51,13 @@ const DEFAULTS = {
 	// payment path uses these — the EVM/EIP-3009 path is fully client-side and
 	// needs no backend. `null` ⇒ resolve from the script's own origin at runtime.
 	apiOrigin: null,
-	// Footer attribution shown at the bottom of the modal.
-	brand: { label: 'Powered by three.ws', href: 'https://three.ws' },
+	// Footer attribution shown at the bottom of the modal. `null` ⇒ the footer
+	// link is hidden until a host sets `{ label, href? }`.
+	brand: null,
 	// ERC-8021 builder-code self-attribution echoed back when the 402 challenge
 	// declares a builder code. `wallet` = your wallet code, `service` = your
-	// integration code. Set to null to disable the echo entirely.
-	builderCode: { wallet: '3d_agent', service: '3d_agent_modal' },
+	// integration code. `null` ⇒ no self-attribution unless a host opts in.
+	builderCode: null,
 	// CDN modules dynamic-imported on demand. Override to self-host / satisfy a
 	// strict Content-Security-Policy.
 	solanaWeb3Url: 'https://esm.sh/@solana/web3.js@1.95.3?bundle',
@@ -65,7 +66,7 @@ const DEFAULTS = {
 
 const config = {
 	apiOrigin: DEFAULTS.apiOrigin,
-	brand: { ...DEFAULTS.brand },
+	brand: DEFAULTS.brand ? { ...DEFAULTS.brand } : null,
 	builderCode: DEFAULTS.builderCode ? { ...DEFAULTS.builderCode } : null,
 	solanaWeb3Url: DEFAULTS.solanaWeb3Url,
 	nobleHashesUrl: DEFAULTS.nobleHashesUrl,
@@ -90,7 +91,8 @@ function resolveScriptOrigin() {
 export function configure(opts = {}) {
 	if (!opts || typeof opts !== 'object') return getConfig();
 	if (opts.apiOrigin !== undefined) config.apiOrigin = opts.apiOrigin;
-	if (opts.brand) config.brand = { ...config.brand, ...opts.brand };
+	if (opts.brand === null) config.brand = null;
+	else if (opts.brand) config.brand = { ...(config.brand || {}), ...opts.brand };
 	if (opts.builderCode === null) config.builderCode = null;
 	else if (opts.builderCode) config.builderCode = { ...(config.builderCode || {}), ...opts.builderCode };
 	if (opts.solanaWeb3Url) config.solanaWeb3Url = opts.solanaWeb3Url;
@@ -101,7 +103,7 @@ export function configure(opts = {}) {
 export function getConfig() {
 	return {
 		apiOrigin: config.apiOrigin,
-		brand: { ...config.brand },
+		brand: config.brand ? { ...config.brand } : null,
 		builderCode: config.builderCode ? { ...config.builderCode } : null,
 		solanaWeb3Url: config.solanaWeb3Url,
 		nobleHashesUrl: config.nobleHashesUrl,

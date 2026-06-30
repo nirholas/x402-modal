@@ -1,4 +1,4 @@
-// Type definitions for @three-ws/x402-modal
+// Type definitions for @nirholas/x402-modal
 
 /** A CAIP-2 network id, e.g. `solana:5eyk…`, `eip155:8453` (Base). */
 export type NetworkId = string;
@@ -32,7 +32,10 @@ export interface SpendingCaps {
 	maxPerDay?: number | string;
 }
 
-/** Global configuration. Defaults reproduce three.ws's hosted behaviour. */
+/**
+ * Global configuration. Defaults are vendor-neutral: `brand` and `builderCode`
+ * are `null` until a host opts in.
+ */
 export interface X402Config {
 	/**
 	 * Origin serving the Solana `prepare`/`encode` checkout helpers
@@ -41,8 +44,9 @@ export interface X402Config {
 	 * resolves from the script's own origin. `''` means same-origin.
 	 */
 	apiOrigin?: string | null;
-	brand?: Brand;
-	/** `null` disables the builder-code echo entirely. */
+	/** `null` hides the footer attribution entirely (the default). */
+	brand?: Brand | null;
+	/** `null` disables the builder-code echo entirely (the default). */
 	builderCode?: BuilderCode | null;
 	/** CDN URL for `@solana/web3.js`, dynamic-imported on the Solana path. */
 	solanaWeb3Url?: string;

@@ -1,4 +1,4 @@
-// examples/server.mjs — reference Solana checkout helper for @three-ws/x402-modal.
+// examples/server.mjs — reference Solana checkout helper for @nirholas/x402-modal.
 //
 // The EVM/Base payment path is fully client-side and needs NO backend. This
 // helper exists only for the Solana path, which must build a transfer

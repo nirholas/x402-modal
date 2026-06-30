@@ -90,7 +90,8 @@ The modal then re-sends the original request to `resource_url` with
 
 ## Reference implementation
 
-A production implementation backs three.ws at `api/x402-checkout.js`. Its shape:
+A self-contained, runnable version of this helper ships in
+[`examples/server.mjs`](../examples/server.mjs). Its shape:
 
 ```js
 // POST /api/x402-checkout?action=prepare|encode
