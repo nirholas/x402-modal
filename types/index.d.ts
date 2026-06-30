@@ -1,4 +1,4 @@
-// Type definitions for @nirholas/x402-modal
+// Type definitions for @three-ws/x402-modal
 
 /** A CAIP-2 network id, e.g. `solana:5eyk…`, `eip155:8453` (Base). */
 export type NetworkId = string;

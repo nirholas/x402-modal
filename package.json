@@ -1,6 +1,6 @@
 {
-	"name": "@nirholas/x402-modal",
-	"version": "0.2.0",
+	"name": "@three-ws/x402-modal",
+	"version": "0.2.1",
 	"description": "A drop-in, dependency-free payment modal for any x402 paid endpoint. One script tag turns a 402 challenge into a polished checkout: wallet connect (Phantom on Solana, MetaMask/EVM via EIP-3009), the 402 → sign → settle flow, SIWX re-entry, spending caps, and a receipt — vanilla JS, no bundler required.",
 	"keywords": [
 		"x402",

@@ -1,4 +1,4 @@
-# Contributing to @nirholas/x402-modal
+# Contributing to @three-ws/x402-modal
 
 Thanks for helping improve the x402 payment modal. This guide covers the local
 setup, the build, the tests, and the conventions the project follows.

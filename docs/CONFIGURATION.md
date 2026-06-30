@@ -19,7 +19,7 @@ attribution and echoes no builder code. Set `brand` and `builderCode` to opt in.
 ## `configure(config)` / `getConfig()`
 
 ```js
-import { configure, getConfig } from '@nirholas/x402-modal';
+import { configure, getConfig } from '@three-ws/x402-modal';
 configure({ apiOrigin: 'https://pay.example.com' });
 getConfig(); // → fully-resolved snapshot
 ```

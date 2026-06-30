@@ -1,6 +1,6 @@
 # Examples
 
-Runnable recipes for `@nirholas/x402-modal`. Every snippet below is complete and
+Runnable recipes for `@three-ws/x402-modal`. Every snippet below is complete and
 copy-pasteable. All you need to supply is your own x402-protected endpoint (one
 that answers with `402 Payment Required` + an `accepts[]` array — see
 [`PROTOCOL.md`](./PROTOCOL.md)).
@@ -29,7 +29,7 @@ The smallest integration. The `/global` script binds the button automatically.
 </button>
 <pre id="out"></pre>
 
-<script type="module" src="https://unpkg.com/@nirholas/x402-modal/global"></script>
+<script type="module" src="https://unpkg.com/@three-ws/x402-modal/global"></script>
 <script type="module">
   const btn = document.querySelector('button');
   btn.addEventListener('x402:result', (e) => {
@@ -49,7 +49,7 @@ The smallest integration. The `/global` script binds the button automatically.
 Drive the flow from your own handler and await the result.
 
 ```js
-import { pay } from '@nirholas/x402-modal';
+import { pay } from '@three-ws/x402-modal';
 
 async function buy() {
   try {
@@ -79,7 +79,7 @@ Unlock content after a single micropayment. CDN-only, no install.
 <button id="buy">Unlock article — $0.05</button>
 <article id="content" hidden></article>
 
-<script type="module" src="https://unpkg.com/@nirholas/x402-modal/global"></script>
+<script type="module" src="https://unpkg.com/@three-ws/x402-modal/global"></script>
 <script>
   document.getElementById('buy').addEventListener('click', async () => {
     try {
@@ -111,7 +111,7 @@ re-paying.
 
 ```jsx
 import { useState, useCallback } from 'react';
-import { pay } from '@nirholas/x402-modal';
+import { pay } from '@three-ws/x402-modal';
 
 export function PayButton({ endpoint }) {
   const [out, setOut] = useState(null);
@@ -141,7 +141,7 @@ export function PayButton({ endpoint }) {
 Set global config once in your app entry:
 
 ```js
-import { configure } from '@nirholas/x402-modal';
+import { configure } from '@three-ws/x402-modal';
 configure({ brand: { label: 'Powered by Acme', href: 'https://acme.com' } });
 ```
 
@@ -152,7 +152,7 @@ configure({ brand: { label: 'Powered by Acme', href: 'https://acme.com' } });
 ```vue
 <script setup>
 import { ref } from 'vue';
-import { pay } from '@nirholas/x402-modal';
+import { pay } from '@three-ws/x402-modal';
 
 const out = ref(null);
 const error = ref(null);
@@ -195,7 +195,7 @@ Repoint the Solana backend and add a footer, all from the script tag — no JS:
 Equivalent from JS, before the first `pay()`:
 
 ```js
-import { configure } from '@nirholas/x402-modal';
+import { configure } from '@three-ws/x402-modal';
 
 configure({
   apiOrigin: 'https://pay.your-company.com',
@@ -212,7 +212,7 @@ Cap how much a single browser session can spend, so a misbehaving agent can't
 drain a wallet. Amounts are micro-USD (`1_000_000` = `$1`).
 
 ```js
-import { pay } from '@nirholas/x402-modal';
+import { pay } from '@three-ws/x402-modal';
 
 const out = await pay({
   endpoint: '/api/paid/inference',
@@ -238,7 +238,7 @@ The ESM build is side-effect-free, so it does **not** auto-bind. Call `init()`
 yourself (and again after injecting buttons):
 
 ```js
-import { init } from '@nirholas/x402-modal';
+import { init } from '@three-ws/x402-modal';
 
 init(); // binds every [data-x402-endpoint] on the page
 

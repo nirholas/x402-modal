@@ -1,6 +1,6 @@
 <div align="center">
 
-# @nirholas/x402-modal
+# @three-ws/x402-modal
 
 **A drop-in payment modal for any [x402](https://x402.org) paid endpoint.**
 
@@ -9,10 +9,10 @@ discover the challenge, connect a wallet (Phantom on Solana, MetaMask / any EVM
 wallet via EIP-3009), sign, settle, and show a receipt — in **vanilla JS, with no
 bundler and no framework**.
 
-[![npm](https://img.shields.io/npm/v/@nirholas/x402-modal?logo=npm&color=cb3837)](https://www.npmjs.com/package/@nirholas/x402-modal)
-[![bundle size](https://img.shields.io/badge/CDN%20gzip-~12%20kB-3b82f6)](https://www.jsdelivr.com/package/npm/@nirholas/x402-modal)
+[![npm](https://img.shields.io/npm/v/@three-ws/x402-modal?logo=npm&color=cb3837)](https://www.npmjs.com/package/@three-ws/x402-modal)
+[![bundle size](https://img.shields.io/badge/CDN%20gzip-~12%20kB-3b82f6)](https://www.jsdelivr.com/package/npm/@three-ws/x402-modal)
 [![License: Proprietary](https://img.shields.io/badge/license-Proprietary-red.svg)](./LICENSE)
-![node](https://img.shields.io/node/v/@nirholas/x402-modal?color=339933&logo=node.js)
+![node](https://img.shields.io/node/v/@three-ws/x402-modal?color=339933&logo=node.js)
 ![dependencies](https://img.shields.io/badge/runtime%20deps-0-22c55e)
 
 [Install](#install) · [Quickstart](#quickstart) · [How it works](#how-it-works) · [API](#api-reference) · [Configuration](#configuration-reference) · [Frameworks](#framework-guides) · [Wallets](#wallets--assets) · [FAQ](#faq--troubleshooting)
@@ -63,11 +63,11 @@ backend helper (see [The backend](#the-solana-backend)).
 ### npm (bundlers / frameworks)
 
 ```sh
-npm i @nirholas/x402-modal
+npm i @three-ws/x402-modal
 ```
 
 ```js
-import { pay, configure } from '@nirholas/x402-modal'; // ESM, no side effects
+import { pay, configure } from '@three-ws/x402-modal'; // ESM, no side effects
 ```
 
 ### CDN `<script>` (no install, no bundler)
@@ -77,14 +77,14 @@ The `/global` build auto-binds `[data-x402-endpoint]` elements and exposes
 
 ```html
 <!-- unpkg -->
-<script type="module" src="https://unpkg.com/@nirholas/x402-modal/global"></script>
+<script type="module" src="https://unpkg.com/@three-ws/x402-modal/global"></script>
 
 <!-- jsDelivr -->
-<script type="module" src="https://cdn.jsdelivr.net/npm/@nirholas/x402-modal/global"></script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@three-ws/x402-modal/global"></script>
 ```
 
 > Pin a version for production, e.g.
-> `https://unpkg.com/@nirholas/x402-modal@0.2.0/global`.
+> `https://unpkg.com/@three-ws/x402-modal@0.2.0/global`.
 
 The CDN bundle is a single self-contained file (~12 kB gzipped). No `npm`, no
 build step.
@@ -112,7 +112,7 @@ The smallest possible page that pops the modal and settles a `402`. Save it as
 
     <pre id="out"></pre>
 
-    <script type="module" src="https://unpkg.com/@nirholas/x402-modal/global"></script>
+    <script type="module" src="https://unpkg.com/@three-ws/x402-modal/global"></script>
     <script type="module">
       const btn = document.querySelector('button');
       btn.addEventListener('x402:result', (e) => {
@@ -134,7 +134,7 @@ fires `x402:result` on the button with the full
 Prefer to drive it yourself? Call `pay()` and await the result:
 
 ```js
-import { pay } from '@nirholas/x402-modal';
+import { pay } from '@three-ws/x402-modal';
 
 const out = await pay({
   endpoint: '/api/paid/summarize',
@@ -202,7 +202,7 @@ sequenceDiagram
 
 ## API reference
 
-The ESM entry (`@nirholas/x402-modal`) is **side-effect-free** — importing it
+The ESM entry (`@three-ws/x402-modal`) is **side-effect-free** — importing it
 never touches `window` or binds anything. The `/global` entry adds the auto-bind
 behavior and `window.X402`.
 
@@ -312,12 +312,12 @@ Bound elements dispatch bubbling `CustomEvent`s:
 
 | import specifier                     | build | shape |
 |--------------------------------------|-------|-------|
-| `@nirholas/x402-modal`               | `dist/x402-modal.mjs` | ESM, side-effect-free public API |
-| `@nirholas/x402-modal/global`        | `dist/x402.global.js` | minified IIFE, auto-binds + `window.X402` |
-| `@nirholas/x402-modal/src`           | `src/x402-modal.js`   | unbundled source (advanced / debugging) |
+| `@three-ws/x402-modal`               | `dist/x402-modal.mjs` | ESM, side-effect-free public API |
+| `@three-ws/x402-modal/global`        | `dist/x402.global.js` | minified IIFE, auto-binds + `window.X402` |
+| `@three-ws/x402-modal/src`           | `src/x402-modal.js`   | unbundled source (advanced / debugging) |
 
 The `unpkg` and `jsdelivr` package fields point at `/global`, so bare
-`unpkg.com/@nirholas/x402-modal` also resolves to the drop-in build.
+`unpkg.com/@three-ws/x402-modal` also resolves to the drop-in build.
 
 ---
 
@@ -348,7 +348,7 @@ null`). You opt in by setting them.
 null` to hide the footer; `builderCode: null` to switch the echo off.
 
 ```js
-import { configure } from '@nirholas/x402-modal';
+import { configure } from '@three-ws/x402-modal';
 
 configure({
   apiOrigin: 'https://pay.example.com',                       // Solana backend
@@ -422,7 +422,7 @@ dependency-free — so **enforce those server-side**.
 ### Vanilla HTML (declarative)
 
 ```html
-<script type="module" src="https://unpkg.com/@nirholas/x402-modal/global"></script>
+<script type="module" src="https://unpkg.com/@three-ws/x402-modal/global"></script>
 
 <button
   data-x402-endpoint="/api/paid/summarize"
@@ -445,7 +445,7 @@ dependency-free — so **enforce those server-side**.
 
 ```jsx
 import { useState, useCallback } from 'react';
-import { pay } from '@nirholas/x402-modal';
+import { pay } from '@three-ws/x402-modal';
 
 export function PayButton() {
   const [out, setOut] = useState(null);
@@ -481,7 +481,7 @@ export function PayButton() {
 Set global config once in your app entry (e.g. `main.jsx`):
 
 ```js
-import { configure } from '@nirholas/x402-modal';
+import { configure } from '@three-ws/x402-modal';
 configure({ brand: { label: 'Powered by Acme', href: 'https://acme.com' } });
 ```
 
@@ -496,7 +496,7 @@ Use `window.X402` directly. Nothing to install:
 <button id="buy">Buy article — $0.05</button>
 <article id="content" hidden></article>
 
-<script type="module" src="https://unpkg.com/@nirholas/x402-modal/global"></script>
+<script type="module" src="https://unpkg.com/@three-ws/x402-modal/global"></script>
 <script>
   document.getElementById('buy').addEventListener('click', async () => {
     try {
@@ -645,9 +645,9 @@ buttons. See [Framework guides](#framework-guides).
 
 ## Related packages
 
-- **[`@nirholas/x402-payment-modal`](https://www.npmjs.com/package/@nirholas/x402-payment-modal)**
+- **[`@three-ws/x402-payment-modal`](https://www.npmjs.com/package/@three-ws/x402-payment-modal)**
   — a sibling package. If you arrived looking for that one, note the difference:
-  this package (`@nirholas/x402-modal`) is the **dependency-free, bundler-free
+  this package (`@three-ws/x402-modal`) is the **dependency-free, bundler-free
   drop-in** focused on the smallest possible client (one `<script>` tag,
   `window.X402`, `data-*` binding). Pick `x402-modal` when you want a CDN drop-in
   with zero install.

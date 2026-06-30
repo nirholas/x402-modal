@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@nirholas/x402-modal` are documented here.
+All notable changes to `@three-ws/x402-modal` are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/CONFIGURATION.md` / `docs/BACKEND.md`, and `CONTRIBUTING.md`.
 
 ### Changed
-- Published as `@nirholas/x402-modal`. Defaults are now vendor-neutral: the `brand`
+- Published as `@three-ws/x402-modal`. Defaults are now vendor-neutral: the `brand`
   footer link and `builderCode` attribution default to `null` (off) until a host
   opts in. The modal settles a 402 from any origin with zero configuration; USDC
   is the default settlement asset.

@@ -1,4 +1,4 @@
-// @nirholas/x402-modal — a drop-in payment modal for any x402 paid endpoint.
+// @three-ws/x402-modal — a drop-in payment modal for any x402 paid endpoint.
 //
 // This is the canonical, side-effect-free core. It exports the public API
 // (`pay`, `init`, `configure`, `getConfig`, `version`, `CheckoutModal`, and the
@@ -8,12 +8,12 @@
 //
 // Bundler / npm usage:
 //
-//   import { pay, configure } from '@nirholas/x402-modal';
+//   import { pay, configure } from '@three-ws/x402-modal';
 //   const out = await pay({ endpoint: '/api/paid/summarize', body: { text: 'hi' } });
 //
 // Drop-in <script> usage (the global build auto-binds `data-x402-endpoint`):
 //
-//   <script type="module" src="https://unpkg.com/@nirholas/x402-modal/global"></script>
+//   <script type="module" src="https://unpkg.com/@three-ws/x402-modal/global"></script>
 //   <button data-x402-endpoint="/api/paid/summarize" data-x402-method="POST">Pay & run</button>
 //
 // The modal drives the full 402 → connect wallet → sign → retry → settle flow,
