@@ -86,5 +86,7 @@ flow bug, include the network (Base / Solana), the wallet, and the shape of the
 
 ## License
 
-By contributing you agree your contributions are licensed under the project's
-[Apache-2.0](./LICENSE) license.
+By contributing you agree your contributions become the proprietary property of
+the Owner. Proprietary — Copyright (c) 2026 nirholas. All Rights Reserved.
+Unauthorized use, copying, modification, or distribution is prohibited. See
+[LICENSE](./LICENSE).
