@@ -28,11 +28,10 @@
 	"homepage": "https://three.ws",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/nirholas/three.ws.git",
-		"directory": "x402-modal-sdk"
+		"url": "git+https://github.com/nirholas/x402-modal.git"
 	},
 	"bugs": {
-		"url": "https://github.com/nirholas/three.ws/issues"
+		"url": "https://github.com/nirholas/x402-modal/issues"
 	},
 	"type": "module",
 	"main": "./dist/x402-modal.mjs",
