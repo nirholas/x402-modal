@@ -11,7 +11,6 @@ bundler and no framework**.
 
 [![npm](https://img.shields.io/npm/v/@three-ws/x402-modal?logo=npm&color=cb3837)](https://www.npmjs.com/package/@three-ws/x402-modal)
 [![bundle size](https://img.shields.io/badge/CDN%20gzip-~12%20kB-3b82f6)](https://www.jsdelivr.com/package/npm/@three-ws/x402-modal)
-[![License: Proprietary](https://img.shields.io/badge/license-Proprietary-red.svg)](./LICENSE)
 ![node](https://img.shields.io/node/v/@three-ws/x402-modal?color=339933&logo=node.js)
 ![dependencies](https://img.shields.io/badge/runtime%20deps-0-22c55e)
 
@@ -669,4 +668,4 @@ buttons. See [Framework guides](#framework-guides).
 
 ## License
 
-Proprietary — Copyright (c) 2026 nirholas. All Rights Reserved. Unauthorized use, copying, modification, or distribution is prohibited. See [LICENSE](./LICENSE).
+All rights reserved. See [LICENSE](LICENSE).
