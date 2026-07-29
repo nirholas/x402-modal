@@ -5,6 +5,16 @@ All notable changes to `@three-ws/x402-modal` are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-06-30
+
+### Changed
+- Renamed the published package from `@nirholas/x402-modal` to
+  `@three-ws/x402-modal`; all install snippets, CDN URLs, and docs updated to the
+  new scope.
+- Licensing switched to proprietary — Copyright 2026 nirholas, all rights
+  reserved. See [LICENSE](LICENSE); `package.json` declares
+  `"license": "SEE LICENSE IN LICENSE"`.
+
 ## [0.2.0] - 2026-06-30
 
 ### Added
@@ -21,4 +31,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is the default settlement asset.
 - The build banner is derived from package metadata (no hardcoded host/branding).
 
+[0.2.1]: https://github.com/nirholas/x402-modal/releases/tag/v0.2.1
 [0.2.0]: https://github.com/nirholas/x402-modal/releases/tag/v0.2.0
