@@ -669,3 +669,7 @@ buttons. See [Framework guides](#framework-guides).
 ## License
 
 All rights reserved. See [LICENSE](LICENSE).
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=nirholas/x402-modal&type=Date)](https://www.star-history.com/#nirholas/x402-modal&Date)
