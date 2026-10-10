@@ -1,0 +1,28 @@
+# x402-modal
+
+> A drop-in payment modal for any x402 paid endpoint. One <script> tag turns an HTTP 402 Payment Required into a polished checkout: discover the challenge, connect a wallet (Phantom on Solana, MetaMask / any EVM wallet via EIP-3009), sign, settle, and show a receipt: in vanilla JS, with no bundler and no framework.
+
+x402-modal is an open-source repository by nirholas, part of the three.ws ecosystem.
+
+## Docs
+
+- [README](https://github.com/nirholas/x402-modal/blob/HEAD/README.md): install, usage and reference
+- [What & why](https://github.com/nirholas/x402-modal/blob/HEAD/README.md#what-why)
+- [Install](https://github.com/nirholas/x402-modal/blob/HEAD/README.md#install)
+- [Quickstart](https://github.com/nirholas/x402-modal/blob/HEAD/README.md#quickstart)
+- [How it works](https://github.com/nirholas/x402-modal/blob/HEAD/README.md#how-it-works)
+- [API reference](https://github.com/nirholas/x402-modal/blob/HEAD/README.md#api-reference)
+- [Configuration reference](https://github.com/nirholas/x402-modal/blob/HEAD/README.md#configuration-reference)
+- [Framework guides](https://github.com/nirholas/x402-modal/blob/HEAD/README.md#framework-guides)
+- [Wallets & assets](https://github.com/nirholas/x402-modal/blob/HEAD/README.md#wallets-assets)
+- [AGENTS.md](https://github.com/nirholas/x402-modal/blob/HEAD/AGENTS.md): guidance for coding agents
+- [Full text for LLMs](https://github.com/nirholas/x402-modal/blob/HEAD/llms-full.txt): the README inlined
+
+## Project
+
+- [Source](https://github.com/nirholas/x402-modal)
+- [Issues](https://github.com/nirholas/x402-modal/issues)
+- [Discussions](https://github.com/nirholas/x402-modal/discussions)
+- [Homepage](https://github.com/nirholas/x402-modal)
+- [three.ws](https://three.ws): the platform this is part of
+- [All repositories by nirholas](https://github.com/nirholas/nirholas#readme)

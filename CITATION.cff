@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it as below.
+title: "x402-modal"
+abstract: "A drop-in payment modal for any x402 paid endpoint. One <script> tag turns an HTTP 402 Payment Required into a polished checkout: discover the challenge, connect a wallet (Phantom on Solana, MetaMask / any EVM wallet via EIP-3009), sign, settle, and show a receipt: in vanilla JS, with no bundler and no framework."
+repository-code: "https://github.com/nirholas/x402-modal"
+url: "https://three.ws"
+authors:
+  - name: three.ws
+    website: "https://three.ws"
