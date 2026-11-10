@@ -1,0 +1,19 @@
+{
+  "name": "x402-checkout-modal",
+  "version": "0.2.1",
+  "description": "Add a drop-in checkout modal to a web page for any x402 paid endpoint: wallet connect, sign, settle and receipt.",
+  "author": {
+    "name": "nirholas"
+  },
+  "repository": "https://github.com/nirholas/x402-modal",
+  "homepage": "https://github.com/nirholas/x402-modal",
+  "keywords": [
+    "x402",
+    "payments",
+    "checkout",
+    "modal",
+    "wallet",
+    "solana",
+    "evm"
+  ]
+}

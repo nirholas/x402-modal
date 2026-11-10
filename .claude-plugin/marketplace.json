@@ -1,0 +1,22 @@
+{
+  "name": "x402-modal",
+  "owner": {
+    "name": "nirholas"
+  },
+  "description": "Dependency-free x402 payment modal for web pages, loaded by one script tag or imported as an ES module.",
+  "plugins": [
+    {
+      "name": "x402-checkout-modal",
+      "source": "./plugins/x402-checkout-modal",
+      "description": "Add a drop-in checkout modal to a web page for any x402 paid endpoint: wallet connect, sign, settle and receipt.",
+      "category": "development",
+      "tags": [
+        "x402",
+        "payments",
+        "checkout",
+        "frontend",
+        "wallet"
+      ]
+    }
+  ]
+}
